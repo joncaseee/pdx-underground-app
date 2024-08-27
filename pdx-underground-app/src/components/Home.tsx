@@ -5,6 +5,7 @@ import { db } from "../firebase";
 interface Event {
   id: string;
   title: string;
+  organizer: string;
   description: string;
   dateTime: string;
   imageUrl: string;
@@ -55,6 +56,7 @@ const Home: React.FC = () => {
             <h2 className="text-xl font-bold text-white mb-2">
               {event.title}
             </h2>
+            <p className="text-white text-sm mb-2">{event.organizer}</p>
             <p className="text-white mb-2">{event.description}</p>
             <p className="text-white font-semibold">
               Date & Time: {new Date(event.dateTime).toLocaleString([], { year: 'numeric', month: '2-digit', day: '2-digit', hour: 'numeric', minute: '2-digit' })}

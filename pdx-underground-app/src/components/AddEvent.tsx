@@ -79,7 +79,7 @@ const AddEvent: React.FC = () => {
       <input
         type="text"
         value={organizer}
-        onChange={(e) => setDescription(e.target.value)}
+        onChange={(e) => setOrganizer(e.target.value)}
         placeholder="Event Organizer"
         className="w-full p-2 mb-4 border rounded bg-slate-600 text-white"
         required

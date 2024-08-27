@@ -6,7 +6,6 @@ import {
   where,
   orderBy,
   onSnapshot,
-  getDocs,
   deleteDoc,
   doc,
 } from "firebase/firestore";
@@ -28,6 +27,7 @@ interface Event {
 const Profile: React.FC = () => {
   const [events, setEvents] = useState<Event[]>([]);
   const [user, setUser] = useState<User | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -37,16 +37,23 @@ const Profile: React.FC = () => {
         const eventsQuery = query(
           collection(db, "events"),
           where("userId", "==", currentUser.uid),
-          orderBy("dateTime", "asc")
+          orderBy("dateTime", "desc")
         );
 
-        const unsubscribeEvents = onSnapshot(eventsQuery, (snapshot) => {
-          const newEvents = snapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-          })) as Event[];
-          setEvents(newEvents);
-        });
+        const unsubscribeEvents = onSnapshot(eventsQuery, 
+          (snapshot) => {
+            const newEvents = snapshot.docs.map((doc) => ({
+              id: doc.id,
+              ...doc.data(),
+            })) as Event[];
+            setEvents(newEvents);
+            setError(null);
+          },
+          (err) => {
+            console.error("Firestore query error:", err);
+            setError(`Error fetching events: ${err.message}`);
+          }
+        );
 
         return () => unsubscribeEvents();
       } else {
@@ -109,7 +116,9 @@ const Profile: React.FC = () => {
           Sign Out
         </button>
         <h3 className="text-xl font-semibold mb-2">Your Events</h3>
-        {events.length === 0 ? (
+        {error ? (
+          <p className="text-red-500">{error}</p>
+        ) : events.length === 0 ? (
           <p>You haven't created any events yet.</p>
         ) : (
           events.map((event) => (
