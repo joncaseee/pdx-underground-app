@@ -2,10 +2,9 @@ import SignIn from "./SignIn";
 
 const WelcomeScreen: React.FC = () => (
   <div className="welcome-screen p-8 max-w-2xl mx-auto">
-    <h1 className="text-4xl font-bold mb-4">Welcome to the Template</h1>
-    <p className="mb-4">
-      This template is a simple social media app that allows users to sign in,
-      post images with text, and see a public feed.
+    <h1 className="text-4xl font-bold mb-4 text-center pb-1">PDX Underground</h1>
+    <p className="mb-4 text-center">
+      A Direct Line to Renegades and Underground Events In Portland.
     </p>
     <div className="mb-4">
       <img
@@ -16,10 +15,9 @@ const WelcomeScreen: React.FC = () => (
     </div>
     <h2 className="text-2xl font-semibold mb-2">Features:</h2>
     <ul className="list-disc list-inside mb-4">
-      <li>User authentication with Google Sign-In</li>
-      <li>Create posts with images and captions</li>
-      <li>View a public feed of all posts</li>
-      <li>Personal profile page</li>
+      <li>Create events with images and descriptions</li>
+      <li>View a public feed of all upcoming events</li>
+      <li>Personal profile page to edit and delete events</li>
     </ul>
     <SignIn />
   </div>

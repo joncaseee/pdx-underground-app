@@ -143,7 +143,7 @@ const Profile: React.FC = () => {
                 )}
                 <h2 className="text-xl font-bold text-white mb-2">{event.title}</h2>
                 <p className="text-white mb-2">{event.description}</p>
-                <p className="text-white font-semibold">
+                <p className="text-white text-sm font-semibold">
                   Date & Time: {new Date(event.dateTime).toLocaleString([], { year: 'numeric', month: '2-digit', day: '2-digit', hour: 'numeric', minute: '2-digit' })}
                 </p>
               </div>
