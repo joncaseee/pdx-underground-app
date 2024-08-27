@@ -7,6 +7,7 @@ import { db, storage } from "../firebase";
 
 const AddEvent: React.FC = () => {
   const [title, setTitle] = useState("");
+  const [organizer, setOrganizer] = useState("");
   const [description, setDescription] = useState("");
   const [dateTime, setDateTime] = useState("");
   const [image, setImage] = useState<File | null>(null);
@@ -45,6 +46,7 @@ const AddEvent: React.FC = () => {
       await addDoc(collection(db, "events"), {
         userId: user.uid,
         title,
+        organizer,
         description,
         dateTime,
         imageUrl,
@@ -52,6 +54,7 @@ const AddEvent: React.FC = () => {
       });
 
       setTitle("");
+      setOrganizer("")
       setDescription("");
       setDateTime("");
       setImage(null);
@@ -70,6 +73,14 @@ const AddEvent: React.FC = () => {
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         placeholder="Event Title"
+        className="w-full p-2 mb-4 border rounded bg-slate-600 text-white"
+        required
+      />
+      <input
+        type="text"
+        value={organizer}
+        onChange={(e) => setDescription(e.target.value)}
+        placeholder="Event Organizer"
         className="w-full p-2 mb-4 border rounded bg-slate-600 text-white"
         required
       />

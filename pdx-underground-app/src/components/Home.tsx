@@ -39,7 +39,6 @@ const Home: React.FC = () => {
       <h3 className="text-l font-bold mb-4 text-center">
         Your Feed for Underground Events
       </h3>
-      {/* Responsive grid setup */}
       <div className="max-w-8xl mx-10 grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {events.map((event) => (
           <div
@@ -58,7 +57,7 @@ const Home: React.FC = () => {
             </h2>
             <p className="text-white mb-2">{event.description}</p>
             <p className="text-white font-semibold">
-              Date & Time: {new Date(event.dateTime).toLocaleString()}
+              Date & Time: {new Date(event.dateTime).toLocaleString([], { year: 'numeric', month: '2-digit', day: '2-digit', hour: 'numeric', minute: '2-digit' })}
             </p>
           </div>
         ))}

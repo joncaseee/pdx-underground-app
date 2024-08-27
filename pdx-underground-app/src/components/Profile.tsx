@@ -19,6 +19,7 @@ import { ref, deleteObject } from "firebase/storage";
 interface Event {
   id: string;
   title: string;
+  organizer: string;
   description: string;
   dateTime: string;
   imageUrl: string;
@@ -38,13 +39,6 @@ const Profile: React.FC = () => {
           where("userId", "==", currentUser.uid),
           orderBy("dateTime", "asc")
         );
-
-        const querySnapshot = await getDocs(eventsQuery);
-        const userEvents = querySnapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        })) as Event[];
-        setEvents(userEvents);
 
         const unsubscribeEvents = onSnapshot(eventsQuery, (snapshot) => {
           const newEvents = snapshot.docs.map((doc) => ({
