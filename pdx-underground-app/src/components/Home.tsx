@@ -81,7 +81,7 @@ const Home: React.FC = () => {
           </div>
         ))}
       </div>
-      <ViewEvent event={selectedEvent} onClose={handleCloseModal} />
+      {selectedEvent && <ViewEvent event={selectedEvent} onClose={handleCloseModal} />}
     </div>
   );
 };

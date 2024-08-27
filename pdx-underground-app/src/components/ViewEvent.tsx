@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 
 interface Event {
@@ -16,14 +16,39 @@ interface ViewEventProps {
 }
 
 const ViewEvent: React.FC<ViewEventProps> = ({ event, onClose }) => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  useEffect(() => {
+    if (event) {
+      setIsOpen(true);
+    }
+  }, [event]);
+
+  const handleClose = () => {
+    setIsOpen(false);
+    setTimeout(() => {
+      onClose();
+    }, 300); // Match this delay with the transition duration
+  };
+
   if (!event) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4 z-50">
-      <div className="bg-slate-800 rounded-lg max-w-3xl w-full max-h-[90vh] overflow-y-auto relative">
+    <div 
+      className={`fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4 z-50 transition-opacity duration-300 ease-in-out ${
+        isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+      }`}
+      onClick={handleClose}
+    >
+      <div 
+        className={`bg-slate-800 rounded-lg max-w-3xl w-full max-h-[90vh] overflow-y-auto relative transition-all duration-300 ease-in-out ${
+          isOpen ? 'scale-100 opacity-100' : 'scale-95 opacity-0'
+        }`}
+        onClick={(e) => e.stopPropagation()}
+      >
         <button
-          onClick={onClose}
-          className="absolute top-2 right-2 text-white hover:text-gray-300"
+          onClick={handleClose}
+          className="absolute top-2 right-2 text-white hover:text-gray-300 transition-colors duration-200"
           aria-label="Close modal"
         >
           <X size={24} />
