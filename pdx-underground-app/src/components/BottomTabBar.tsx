@@ -4,7 +4,7 @@ import { Home as HomeIcon, User, PlusSquare } from "lucide-react";
 const BottomTabBar: React.FC = () => {
   const location = useLocation();
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-slate-700 text-white p-4 flex justify-around items-center border-t-2 border-slate-600">
+    <nav className="fixed h-20 bottom-0 left-0 right-0 bg-slate-700 text-white p-4 flex justify-around items-center border-t-2 border-slate-600">
       <div className="absolute top-0 left-0 right-0 h-4 bg-gradient-to-b from-black/20 to-transparent"></div>
       <Link
         to="/"

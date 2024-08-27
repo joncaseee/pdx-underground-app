@@ -125,7 +125,7 @@ const EditEvent: React.FC = () => {
         value={description}
         onChange={(e) => setDescription(e.target.value)}
         placeholder="Event Description"
-        className="w-full p-2 mb-4 border rounded bg-slate-600 text-white"
+        className="w-full h-48 p-2 mb-4 border rounded bg-slate-600 text-white"
         required
       />
       <input

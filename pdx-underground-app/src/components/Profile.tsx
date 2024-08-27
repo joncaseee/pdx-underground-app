@@ -131,40 +131,46 @@ const Profile: React.FC = () => {
         ) : events.length === 0 ? (
           <p>You haven't created any events yet.</p>
         ) : (
-          <div className="max-w-8xl mx-10 grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="max-w-8xl mx-auto pb-16 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {events.map((event) => (
               <div
                 key={event.id}
-                className="event bg-slate-700 shadow-md rounded-lg p-4 relative"
+                className="event bg-slate-700 shadow-md rounded-lg overflow-hidden relative flex flex-col"
               >
-                <div className="absolute bottom-2.5 right-4 flex space-x-2">
+                {event.imageUrl && (
+                  <div className="relative pt-[150%]">
+                    <img
+                      src={event.imageUrl}
+                      alt="Event"
+                      className="absolute top-0 left-0 w-full h-full object-cover"
+                    />
+                  </div>
+                )}
+                <div className="p-4 flex-grow flex flex-col justify-between">
+                  <div>
+                    <h2 className="text-xl font-bold text-white mb-2">{event.title}</h2>
+                    <p className="text-white mb-2 line-clamp-2">{truncateDescription(event.description)}</p>
+                  </div>
+                  <p className="text-white text-sm font-semibold mb-2">
+                    Date & Time: {new Date(event.dateTime).toLocaleString([], { year: 'numeric', month: '2-digit', day: '2-digit', hour: 'numeric', minute: '2-digit' })}
+                  </p>
+                </div>
+                <div className="absolute bottom-2 right-2 flex space-x-2">
                   <button
                     onClick={() => handleEditEvent(event.id)}
-                    className="p-1 bg-slate-500 bg-opacity-30 text-white shadow-sm hover:bg-slate-800 hover:text-purple-500 hover:border-purple-500"
+                    className="p-1 bg-slate-500 bg-opacity-30 text-white shadow-sm hover:bg-slate-800 hover:text-purple-500 hover:border-purple-500 rounded"
                     aria-label="Edit event"
                   >
                     <Settings size={20} />
                   </button>
                   <button
                     onClick={() => handleDeleteEvent(event.id, event.imageUrl)}
-                    className="p-1 bg-slate-500 bg-opacity-30 text-white shadow-sm hover:bg-slate-800 hover:text-red-500 hover:border-red-500"
+                    className="p-1 bg-slate-500 bg-opacity-30 text-white shadow-sm hover:bg-slate-800 hover:text-red-500 hover:border-red-500 rounded"
                     aria-label="Delete event"
                   >
                     <Trash2 size={20} />
                   </button>
                 </div>
-                {event.imageUrl && (
-                  <img
-                    src={event.imageUrl}
-                    alt="Event"
-                    className="w-full h-64 object-cover rounded-lg mb-2"
-                  />
-                )}
-                <h2 className="text-xl font-bold text-white mb-2">{event.title}</h2>
-                <p className="text-white mb-2 line-clamp-2">{truncateDescription(event.description)}</p>
-                <p className="text-white text-sm font-semibold">
-                  Date & Time: {new Date(event.dateTime).toLocaleString([], { year: 'numeric', month: '2-digit', day: '2-digit', hour: 'numeric', minute: '2-digit' })}
-                </p>
               </div>
             ))}
           </div>

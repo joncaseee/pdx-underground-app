@@ -18,17 +18,24 @@ const Home: React.FC = () => {
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
 
   useEffect(() => {
+    const now = new Date().toISOString();
     const eventsQuery = query(
       collection(db, "events"),
       orderBy("dateTime", "asc")
     );
 
     const unsubscribe = onSnapshot(eventsQuery, (snapshot) => {
-      const newEvents = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as Event[];
-      setEvents(newEvents);
+      const newEvents = snapshot.docs
+        .map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as Event[];
+
+      const upcomingEvents = newEvents
+        .filter((event) => event.dateTime >= now)
+        .sort((a, b) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime());
+
+      setEvents(upcomingEvents);
     });
 
     return () => unsubscribe();
@@ -56,28 +63,34 @@ const Home: React.FC = () => {
       <h3 className="text-l font-bold mb-4 text-center">
         Your Feed for Underground Events
       </h3>
-      <div className="max-w-8xl mx-10 grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+      <div className="max-w-8xl mx-auto pb-16 grid grid-cols-1 px-8 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
         {events.map((event) => (
           <div
             key={event.id}
-            className="event bg-slate-700 shadow-md rounded-lg p-4 cursor-pointer hover:bg-slate-600 transition-colors duration-200"
+            className="event bg-slate-700 shadow-md rounded-lg overflow-hidden cursor-pointer hover:bg-slate-600 hover:shadow-lg transition-colors duration-200 flex flex-col"
             onClick={() => handleEventClick(event)}
           >
             {event.imageUrl && (
-              <img
-                src={event.imageUrl}
-                alt="Event"
-                className="w-full h-64 object-cover rounded-lg mb-2"
-              />
+              <div className="relative pt-[150%]">
+                <img
+                  src={event.imageUrl}
+                  alt="Event"
+                  className="absolute top-0 left-0 w-full h-full object-cover"
+                />
+              </div>
             )}
-            <h2 className="text-xl font-bold text-white mb-2">
-              {event.title}
-            </h2>
-            <p className="text-white text-sm mb-2">{event.organizer}</p>
-            <p className="text-white mb-2 line-clamp-3">{truncateDescription(event.description)}</p>
-            <p className="text-white font-semibold">
-              Date & Time: {new Date(event.dateTime).toLocaleString([], { year: 'numeric', month: '2-digit', day: '2-digit', hour: 'numeric', minute: '2-digit' })}
-            </p>
+            <div className="p-4 flex-grow flex flex-col justify-between">
+              <div>
+                <h2 className="text-xl font-bold text-white mb-2">
+                  {event.title}
+                </h2>
+                <p className="text-white text-sm mb-2">{event.organizer}</p>
+                <p className="text-white mb-2 line-clamp-3">{truncateDescription(event.description)}</p>
+              </div>
+              <p className="text-white font-semibold mt-2">
+                Date & Time: {new Date(event.dateTime).toLocaleString([], { year: 'numeric', month: '2-digit', day: '2-digit', hour: 'numeric', minute: '2-digit' })}
+              </p>
+            </div>
           </div>
         ))}
       </div>
