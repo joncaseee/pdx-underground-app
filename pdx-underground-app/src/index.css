@@ -41,19 +41,21 @@ button {
 button:hover {
   border-color: #9f43dd;
   background-color: #6f2f99;
+  box-shadow: #9f43dd;
 }
 button:focus,
 button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
 }
 
-@media (prefers-color-scheme: dark) {
+@media (dark) {
   :root {
     color: #213547;
     background-color: #ffffff;
   }
   a:hover {
     color: #9f43dd;
+    box-shadow: #9f43dd;
   }
   /* button {
     

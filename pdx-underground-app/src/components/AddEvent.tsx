@@ -5,8 +5,10 @@ import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage } from "../firebase";
 
-const AddPost: React.FC = () => {
-  const [text, setText] = useState("");
+const AddEvent: React.FC = () => {
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [dateTime, setDateTime] = useState("");
   const [image, setImage] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const navigate = useNavigate();
@@ -35,35 +37,55 @@ const AddPost: React.FC = () => {
     try {
       let imageUrl = "";
       if (image) {
-        const imageRef = ref(storage, `posts/${user.uid}/${Date.now()}`);
+        const imageRef = ref(storage, `events/${user.uid}/${Date.now()}`);
         await uploadBytes(imageRef, image);
         imageUrl = await getDownloadURL(imageRef);
       }
 
-      await addDoc(collection(db, "posts"), {
+      await addDoc(collection(db, "events"), {
         userId: user.uid,
-        text,
+        title,
+        description,
+        dateTime,
         imageUrl,
         createdAt: serverTimestamp(),
       });
 
-      setText("");
+      setTitle("");
+      setDescription("");
+      setDateTime("");
       setImage(null);
-      setPreviewUrl(null); // Reset after form submission only
+      setPreviewUrl(null);
       navigate("/");
     } catch (error) {
-      console.error("Error creating post:", error);
+      console.error("Error creating event:", error);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="add-post p-4 mx-auto max-w-2xl">
-      <h2 className="text-2xl font-bold mb-4 text-center">Create a New Post</h2>
-      <textarea
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        placeholder="What's on your mind?"
+    <form onSubmit={handleSubmit} className="add-event p-4 mx-auto max-w-2xl">
+      <h2 className="text-2xl font-bold mb-4 text-center">Create a New Event</h2>
+      <input
+        type="text"
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        placeholder="Event Title"
         className="w-full p-2 mb-4 border rounded bg-slate-600 text-white"
+        required
+      />
+      <textarea
+        value={description}
+        onChange={(e) => setDescription(e.target.value)}
+        placeholder="Event Description"
+        className="w-full p-2 mb-4 border rounded bg-slate-600 text-white"
+        required
+      />
+      <input
+        type="datetime-local"
+        value={dateTime}
+        onChange={(e) => setDateTime(e.target.value)}
+        className="w-full p-2 mb-4 border rounded bg-slate-600 text-white"
+        required
       />
       {previewUrl && (
         <div className="mb-4">
@@ -87,13 +109,13 @@ const AddPost: React.FC = () => {
         />
         <button
           type="submit"
-          className="button mb-4 px-4 py-2 bg-purple-500 text-white rounded hover:bg-green-600"
+          className="button mb-4 px-4 py-2 bg-purple-500 text-white rounded"
         >
-          Post
+          Create Event
         </button>
       </div>
     </form>
   );
 };
 
-export default AddPost;
+export default AddEvent;

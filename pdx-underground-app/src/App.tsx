@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 import { auth } from "./firebase";
 import Profile from "./components/Profile";
 import Home from "./components/Home";
-import AddPost from "./components/AddPost";
+import AddEvent from "./components/AddEvent";
 import SignIn from "./components/SignIn";
 import { User as FirebaseUser } from "firebase/auth";
 import WelcomeScreen from "./components/WelcomeScreen";
@@ -27,7 +27,7 @@ const App: React.FC = () => {
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/profile" element={<Profile />} />
-              <Route path="/add-post" element={<AddPost />} />
+              <Route path="/add-event" element={<AddEvent />} />
             </Routes>
           ) : (
             <Routes>

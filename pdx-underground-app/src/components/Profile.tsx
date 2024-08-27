@@ -16,14 +16,16 @@ import { Link, useNavigate } from "react-router-dom";
 import { X } from "lucide-react";
 import { ref, deleteObject } from "firebase/storage";
 
-interface Post {
+interface Event {
   id: string;
-  text: string;
+  title: string;
+  description: string;
+  dateTime: string;
   imageUrl: string;
 }
 
 const Profile: React.FC = () => {
-  const [posts, setPosts] = useState<Post[]>([]);
+  const [events, setEvents] = useState<Event[]>([]);
   const [user, setUser] = useState<User | null>(null);
   const navigate = useNavigate();
 
@@ -31,30 +33,30 @@ const Profile: React.FC = () => {
     const unsubscribeAuth = auth.onAuthStateChanged(async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
-        const postsQuery = query(
-          collection(db, "posts"),
+        const eventsQuery = query(
+          collection(db, "events"),
           where("userId", "==", currentUser.uid),
-          orderBy("createdAt", "desc")
+          orderBy("dateTime", "asc")
         );
 
-        const querySnapshot = await getDocs(postsQuery);
-        const userPosts = querySnapshot.docs.map((doc) => ({
+        const querySnapshot = await getDocs(eventsQuery);
+        const userEvents = querySnapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
-        })) as Post[];
-        setPosts(userPosts);
+        })) as Event[];
+        setEvents(userEvents);
 
-        const unsubscribePosts = onSnapshot(postsQuery, (snapshot) => {
-          const newPosts = snapshot.docs.map((doc) => ({
+        const unsubscribeEvents = onSnapshot(eventsQuery, (snapshot) => {
+          const newEvents = snapshot.docs.map((doc) => ({
             id: doc.id,
             ...doc.data(),
-          })) as Post[];
-          setPosts(newPosts);
+          })) as Event[];
+          setEvents(newEvents);
         });
 
-        return () => unsubscribePosts();
+        return () => unsubscribeEvents();
       } else {
-        setPosts([]);
+        setEvents([]);
       }
     });
 
@@ -70,23 +72,20 @@ const Profile: React.FC = () => {
     }
   };
 
-  const handleDeletePost = async (postId: string, imageUrl: string) => {
+  const handleDeleteEvent = async (eventId: string, imageUrl: string) => {
     if (!user) return;
 
     try {
-      // Delete the post document from Firestore
-      await deleteDoc(doc(db, "posts", postId));
+      await deleteDoc(doc(db, "events", eventId));
 
-      // If there's an image associated with the post, delete it from Storage
       if (imageUrl) {
         const imageRef = ref(storage, imageUrl);
         await deleteObject(imageRef);
       }
 
-      // Update the local state to remove the deleted post
-      setPosts((prevPosts) => prevPosts.filter((post) => post.id !== postId));
+      setEvents((prevEvents) => prevEvents.filter((event) => event.id !== eventId));
     } catch (error) {
-      console.error("Error deleting post:", error);
+      console.error("Error deleting event:", error);
     }
   };
 
@@ -115,30 +114,32 @@ const Profile: React.FC = () => {
         >
           Sign Out
         </button>
-        <h3 className="text-xl font-semibold mb-2">Your Posts</h3>
-        {posts.length === 0 ? (
-          <p>You haven't made any posts yet.</p>
+        <h3 className="text-xl font-semibold mb-2">Your Events</h3>
+        {events.length === 0 ? (
+          <p>You haven't created any events yet.</p>
         ) : (
-          posts.map((post) => (
+          events.map((event) => (
             <div
-              key={post.id}
-              className="post bg-slate-700 shadow-md rounded-lg p-4 mb-4 relative"
+              key={event.id}
+              className="event bg-slate-700 shadow-md rounded-lg p-4 mb-4 relative"
             >
               <button
-                onClick={() => handleDeletePost(post.id, post.imageUrl)}
+                onClick={() => handleDeleteEvent(event.id, event.imageUrl)}
                 className="absolute bottom-2.5 right-4 p-1 bg-slate-500 bg-opacity-30 text-white shadow-sm hover:bg-slate-800 hover:text-red-500 hover:border-red-500"
-                aria-label="Delete post"
+                aria-label="Delete event"
               >
                 <X size={20} />
               </button>
-              {post.imageUrl && (
+              {event.imageUrl && (
                 <img
-                  src={post.imageUrl}
-                  alt="Post"
+                  src={event.imageUrl}
+                  alt="Event"
                   className="w-full h-64 object-cover rounded-lg mb-2"
                 />
               )}
-              <p className="text-white">{post.text}</p>
+              <h2 className="text-xl font-bold text-white mb-2">{event.title}</h2>
+              <p className="text-white mb-2">{event.description}</p>
+              <p className="text-white font-semibold">Date & Time: {new Date(event.dateTime).toLocaleString()}</p>
             </div>
           ))
         )}

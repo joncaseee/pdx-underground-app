@@ -13,8 +13,8 @@ const BottomTabBar: React.FC = () => {
         <HomeIcon size={24} />
       </Link>
       <Link
-        to="/add-post"
-        className={`text-2xl ${location.pathname === "/add-post" ? "text-purple-400" : ""}`}
+        to="/add-event"
+        className={`text-2xl ${location.pathname === "/add-event" ? "text-purple-400" : ""}`}
       >
         <PlusSquare size={24} />
       </Link>
