@@ -12,7 +12,7 @@ import {
 import { signOut } from "firebase/auth";
 import { auth, db, storage } from "../firebase";
 import { Link, useNavigate } from "react-router-dom";
-import { X } from "lucide-react";
+import { Settings, Trash2 } from "lucide-react";
 import { ref, deleteObject } from "firebase/storage";
 
 interface Event {
@@ -90,6 +90,16 @@ const Profile: React.FC = () => {
     }
   };
 
+  const handleEditEvent = (eventId: string) => {
+    navigate(`/edit-event/${eventId}`);
+  };
+
+  const truncateDescription = (description: string) => {
+    const lines = description.split('\n').slice(0, 3);
+    const truncated = lines.join('\n');
+    return truncated.length < description.length ? `${truncated}...` : truncated;
+  };
+
   if (!user) {
     return (
       <div className="profile p-4">
@@ -127,13 +137,22 @@ const Profile: React.FC = () => {
                 key={event.id}
                 className="event bg-slate-700 shadow-md rounded-lg p-4 relative"
               >
-                <button
-                  onClick={() => handleDeleteEvent(event.id, event.imageUrl)}
-                  className="absolute bottom-2.5 right-4 p-1 bg-slate-500 bg-opacity-30 text-white shadow-sm hover:bg-slate-800 hover:text-red-500 hover:border-red-500"
-                  aria-label="Delete event"
-                >
-                  <X size={20} />
-                </button>
+                <div className="absolute bottom-2.5 right-4 flex space-x-2">
+                  <button
+                    onClick={() => handleEditEvent(event.id)}
+                    className="p-1 bg-slate-500 bg-opacity-30 text-white shadow-sm hover:bg-slate-800 hover:text-purple-500 hover:border-purple-500"
+                    aria-label="Edit event"
+                  >
+                    <Settings size={20} />
+                  </button>
+                  <button
+                    onClick={() => handleDeleteEvent(event.id, event.imageUrl)}
+                    className="p-1 bg-slate-500 bg-opacity-30 text-white shadow-sm hover:bg-slate-800 hover:text-red-500 hover:border-red-500"
+                    aria-label="Delete event"
+                  >
+                    <Trash2 size={20} />
+                  </button>
+                </div>
                 {event.imageUrl && (
                   <img
                     src={event.imageUrl}
@@ -142,7 +161,7 @@ const Profile: React.FC = () => {
                   />
                 )}
                 <h2 className="text-xl font-bold text-white mb-2">{event.title}</h2>
-                <p className="text-white mb-2">{event.description}</p>
+                <p className="text-white mb-2 line-clamp-2">{truncateDescription(event.description)}</p>
                 <p className="text-white text-sm font-semibold">
                   Date & Time: {new Date(event.dateTime).toLocaleString([], { year: 'numeric', month: '2-digit', day: '2-digit', hour: 'numeric', minute: '2-digit' })}
                 </p>

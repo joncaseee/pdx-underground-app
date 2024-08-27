@@ -1,11 +1,22 @@
-import React, { useState, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect, useRef } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { getAuth } from "firebase/auth";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { db, storage } from "../firebase";
 
-const AddEvent: React.FC = () => {
+interface Event {
+  id: string;
+  title: string;
+  organizer: string;
+  description: string;
+  dateTime: string;
+  imageUrl: string;
+  userId: string;
+}
+
+const EditEvent: React.FC = () => {
+  const [event, setEvent] = useState<Event | null>(null);
   const [title, setTitle] = useState("");
   const [organizer, setOrganizer] = useState("");
   const [description, setDescription] = useState("");
@@ -13,7 +24,30 @@ const AddEvent: React.FC = () => {
   const [image, setImage] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const navigate = useNavigate();
+  const { eventId } = useParams<{ eventId: string }>();
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const fetchEvent = async () => {
+      if (!eventId) return;
+
+      const eventDoc = await getDoc(doc(db, "events", eventId));
+      if (eventDoc.exists()) {
+        const eventData = eventDoc.data() as Event;
+        setEvent(eventData);
+        setTitle(eventData.title);
+        setOrganizer(eventData.organizer);
+        setDescription(eventData.description);
+        setDateTime(eventData.dateTime);
+        setPreviewUrl(eventData.imageUrl);
+      } else {
+        console.log("No such event!");
+        navigate("/profile");
+      }
+    };
+
+    fetchEvent();
+  }, [eventId, navigate]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -33,47 +67,50 @@ const AddEvent: React.FC = () => {
     e.preventDefault();
     const auth = getAuth();
     const user = auth.currentUser;
-    if (!user) return;
+    if (!user || !eventId) return;
 
     try {
-      let imageUrl = "";
+      let imageUrl = event?.imageUrl || "";
       if (image) {
+        // Delete old image if it exists
+        if (event?.imageUrl) {
+          const oldImageRef = ref(storage, event.imageUrl);
+          await deleteObject(oldImageRef);
+        }
+
+        // Upload new image
         const imageRef = ref(storage, `events/${user.uid}/${Date.now()}`);
         await uploadBytes(imageRef, image);
         imageUrl = await getDownloadURL(imageRef);
       }
 
-      await addDoc(collection(db, "events"), {
-        userId: user.uid,
+      await updateDoc(doc(db, "events", eventId), {
         title,
         organizer,
         description,
         dateTime,
         imageUrl,
-        createdAt: serverTimestamp(),
       });
 
-      setTitle("");
-      setOrganizer("")
-      setDescription("");
-      setDateTime("");
-      setImage(null);
-      setPreviewUrl(null);
-      navigate("/");
+      navigate("/profile");
     } catch (error) {
-      console.error("Error creating event:", error);
+      console.error("Error updating event:", error);
     }
   };
 
+  if (!event) {
+    return <div>Loading...</div>;
+  }
+
   return (
-    <form onSubmit={handleSubmit} className="add-event p-4 mx-auto max-w-2xl">
-      <h2 className="text-2xl font-bold mb-4 text-center">Create a New Event</h2>
+    <form onSubmit={handleSubmit} className="edit-event p-4 mx-auto max-w-2xl">
+      <h2 className="text-2xl font-bold mb-4 text-center">Edit Event</h2>
       <input
         type="text"
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         placeholder="Event Title"
-        className="w-full p-2 mb-4  rounded bg-slate-600 text-white"
+        className="w-full p-2 mb-4 border rounded bg-slate-600 text-white"
         required
       />
       <input
@@ -81,21 +118,21 @@ const AddEvent: React.FC = () => {
         value={organizer}
         onChange={(e) => setOrganizer(e.target.value)}
         placeholder="Event Organizer"
-        className="w-full p-2 mb-4  rounded bg-slate-600 text-white"
+        className="w-full p-2 mb-4 border rounded bg-slate-600 text-white"
         required
       />
       <textarea
         value={description}
         onChange={(e) => setDescription(e.target.value)}
         placeholder="Event Description"
-        className="w-full p-2 mb-4  rounded bg-slate-600 text-white"
+        className="w-full p-2 mb-4 border rounded bg-slate-600 text-white"
         required
       />
       <input
         type="datetime-local"
         value={dateTime}
         onChange={(e) => setDateTime(e.target.value)}
-        className="w-full p-2 mb-4  rounded bg-slate-600 text-white"
+        className="w-full p-2 mb-4 border rounded bg-slate-600 text-white"
         required
       />
       {previewUrl && (
@@ -122,11 +159,11 @@ const AddEvent: React.FC = () => {
           type="submit"
           className="button mb-4 px-4 py-2 bg-purple-500 text-white rounded"
         >
-          Create Event
+          Update Event
         </button>
       </div>
     </form>
   );
 };
 
-export default AddEvent;
+export default EditEvent;

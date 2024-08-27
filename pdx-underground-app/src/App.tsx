@@ -4,6 +4,7 @@ import { auth } from "./firebase";
 import Profile from "./components/Profile";
 import Home from "./components/Home";
 import AddEvent from "./components/AddEvent";
+import EditEvent from "./components/EditEvent";
 import SignIn from "./components/SignIn";
 import { User as FirebaseUser } from "firebase/auth";
 import WelcomeScreen from "./components/WelcomeScreen";
@@ -28,6 +29,7 @@ const App: React.FC = () => {
               <Route path="/" element={<Home />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/add-event" element={<AddEvent />} />
+              <Route path="/edit-event/:eventId" element={<EditEvent />} />
             </Routes>
           ) : (
             <Routes>
