@@ -108,43 +108,47 @@ const Profile: React.FC = () => {
   return (
     <div className="profile p-4">
       <h2 className="text-2xl font-bold mb-4 text-center">Your Profile</h2>
-      <div className="mx-auto max-w-2xl">
+      <div className="mx-auto">
         <button
           onClick={handleSignOut}
-          className="container px-4 py-2 rounded mb-4"
+          className="text-white font-thin bg-transparent absolute right-4 top-4 px-4 py-2 rounded mb-4"
         >
           Sign Out
         </button>
-        <h3 className="text-xl font-semibold mb-2">Your Events</h3>
+        <h3 className="text-xl font-semibold mb-4">Your Events</h3>
         {error ? (
           <p className="text-red-500">{error}</p>
         ) : events.length === 0 ? (
           <p>You haven't created any events yet.</p>
         ) : (
-          events.map((event) => (
-            <div
-              key={event.id}
-              className="event bg-slate-700 shadow-md rounded-lg p-4 mb-4 relative"
-            >
-              <button
-                onClick={() => handleDeleteEvent(event.id, event.imageUrl)}
-                className="absolute bottom-2.5 right-4 p-1 bg-slate-500 bg-opacity-30 text-white shadow-sm hover:bg-slate-800 hover:text-red-500 hover:border-red-500"
-                aria-label="Delete event"
+          <div className="max-w-8xl mx-10 grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {events.map((event) => (
+              <div
+                key={event.id}
+                className="event bg-slate-700 shadow-md rounded-lg p-4 relative"
               >
-                <X size={20} />
-              </button>
-              {event.imageUrl && (
-                <img
-                  src={event.imageUrl}
-                  alt="Event"
-                  className="w-full h-64 object-cover rounded-lg mb-2"
-                />
-              )}
-              <h2 className="text-xl font-bold text-white mb-2">{event.title}</h2>
-              <p className="text-white mb-2">{event.description}</p>
-              <p className="text-white font-semibold">Date & Time: {new Date(event.dateTime).toLocaleString()}</p>
-            </div>
-          ))
+                <button
+                  onClick={() => handleDeleteEvent(event.id, event.imageUrl)}
+                  className="absolute bottom-2.5 right-4 p-1 bg-slate-500 bg-opacity-30 text-white shadow-sm hover:bg-slate-800 hover:text-red-500 hover:border-red-500"
+                  aria-label="Delete event"
+                >
+                  <X size={20} />
+                </button>
+                {event.imageUrl && (
+                  <img
+                    src={event.imageUrl}
+                    alt="Event"
+                    className="w-full h-64 object-cover rounded-lg mb-2"
+                  />
+                )}
+                <h2 className="text-xl font-bold text-white mb-2">{event.title}</h2>
+                <p className="text-white mb-2">{event.description}</p>
+                <p className="text-white font-semibold">
+                  Date & Time: {new Date(event.dateTime).toLocaleString([], { year: 'numeric', month: '2-digit', day: '2-digit', hour: 'numeric', minute: '2-digit' })}
+                </p>
+              </div>
+            ))}
+          </div>
         )}
       </div>
     </div>
