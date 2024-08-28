@@ -4,6 +4,7 @@ import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firesto
 import { db } from '../firebase';
 import EventCard from './EventCard';
 import { Event } from '../types/Event';
+import { ClipLoader } from "react-spinners"; 
 
 interface UserProfile {
   alias: string;
@@ -15,6 +16,7 @@ const UserProfile: React.FC = () => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [postedEvents, setPostedEvents] = useState<Event[]>([]);
   const [savedEvents, setSavedEvents] = useState<Event[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -46,13 +48,22 @@ const UserProfile: React.FC = () => {
         );
         setSavedEvents(savedEventsData.filter((event): event is Event => event !== null));
       }
+      setLoading(false);
     };
 
     fetchUserProfile();
   }, [userId]);
 
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <ClipLoader size={50} color={"#8b5cf6"} loading={loading} />
+      </div>
+    );
+  }
+
   if (!profile) {
-    return <div>Loading...</div>;
+    return <div>User profile not found.</div>;
   }
 
   return (

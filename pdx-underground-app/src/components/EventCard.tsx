@@ -97,17 +97,17 @@ const EventCard: React.FC<EventCardProps> = ({
               <Bookmark size={20} fill={isSaved ? 'currentColor' : 'none'} />
             </button>
             <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onLike(event.id);
-              }}
-              className={`flex items-center space-x-1 bg-transparent hover:bg-zinc-700 hover:text-indigo-500 font-bold py-1 px-2 rounded ${
-                isLiked ? 'text-rose-500' : 'text-white'
-              }`}
-            >
-              <Heart size={20} fill={isLiked ? 'currentColor' : 'none'} />
-              <span>{event.likes}</span>
-            </button>
+        onClick={(e) => {
+          e.stopPropagation();
+          onLike(event.id);
+        }}
+        className={`flex items-center space-x-1 bg-transparent hover:bg-zinc-700 hover:text-indigo-500 font-bold py-1 px-2 rounded ${
+          isLiked ? 'text-rose-500' : 'text-white'
+        }`}
+      >
+        <Heart size={20} fill={isLiked ? 'currentColor' : 'none'} />
+        <span>{event.likes}</span>
+      </button>
           </div>
         </div>
       </div>

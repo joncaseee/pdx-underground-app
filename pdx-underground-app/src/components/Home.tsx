@@ -13,6 +13,22 @@ const Home: React.FC = () => {
   const [userSaves, setUserSaves] = useState<{ [key: string]: boolean }>({});
   const [loading, setLoading] = useState(true); // State to manage loading status
 
+  const fetchUserSavedEvents = async () => {
+    const currentUserId = auth.currentUser?.uid;
+    if (currentUserId) {
+      const userSavedEventsRef = doc(db, "userSavedEvents", currentUserId);
+      const docSnap = await getDoc(userSavedEventsRef);
+      if (docSnap.exists()) {
+        const savedEvents = docSnap.data().savedEvents || [];
+        const newUserSaves = events.reduce((acc, event) => {
+          acc[event.id] = savedEvents.includes(event.id);
+          return acc;
+        }, {} as { [key: string]: boolean });
+        setUserSaves(newUserSaves);
+      }
+    }
+  };
+
   useEffect(() => {
     const now = new Date().toISOString();
     const eventsQuery = query(
@@ -70,6 +86,7 @@ const Home: React.FC = () => {
 
   const handleCloseModal = () => {
     setSelectedEvent(null);
+    fetchUserSavedEvents();
   };
 
   const handleLike = async (eventId: string) => {
