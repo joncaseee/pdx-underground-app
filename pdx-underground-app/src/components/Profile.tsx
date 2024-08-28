@@ -8,26 +8,29 @@ import {
   onSnapshot,
   deleteDoc,
   doc,
+  getDoc,
+  updateDoc,
+  arrayRemove,
+  arrayUnion,
+  increment,
 } from "firebase/firestore";
 import { signOut } from "firebase/auth";
 import { auth, db, storage } from "../firebase";
 import { Link, useNavigate } from "react-router-dom";
-import { Settings, Trash2 } from "lucide-react";
 import { ref, deleteObject } from "firebase/storage";
-
-interface Event {
-  id: string;
-  title: string;
-  organizer: string;
-  description: string;
-  dateTime: string;
-  imageUrl: string;
-}
+import ViewEvent from "./ViewEvent";
+import EventCard from "./EventCard";
+import { Event } from "../types/Event";
 
 const Profile: React.FC = () => {
   const [events, setEvents] = useState<Event[]>([]);
+  const [savedEvents, setSavedEvents] = useState<Event[]>([]);
   const [user, setUser] = useState<User | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'your-events' | 'saved-events'>('your-events');
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [userLikes, setUserLikes] = useState<{ [key: string]: boolean }>({});
+  const [userSaves, setUserSaves] = useState<{ [key: string]: boolean }>({});
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -37,17 +40,32 @@ const Profile: React.FC = () => {
         const eventsQuery = query(
           collection(db, "events"),
           where("userId", "==", currentUser.uid),
-          orderBy("dateTime", "desc")
+          orderBy("dateTime", "asc")
         );
 
-        const unsubscribeEvents = onSnapshot(eventsQuery, 
+        const unsubscribeEvents = onSnapshot(
+          eventsQuery,
           (snapshot) => {
             const newEvents = snapshot.docs.map((doc) => ({
               id: doc.id,
               ...doc.data(),
+              likes: doc.data().likes || 0,
+              likedBy: doc.data().likedBy || [],
             })) as Event[];
-            setEvents(newEvents);
+
+            const sortedEvents = newEvents.sort((a, b) => 
+              new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime()
+            );
+
+            setEvents(sortedEvents);
             setError(null);
+
+            // Update userLikes state
+            const newUserLikes = sortedEvents.reduce((acc, event) => {
+              acc[event.id] = event.likedBy.includes(currentUser.uid);
+              return acc;
+            }, {} as { [key: string]: boolean });
+            setUserLikes(newUserLikes);
           },
           (err) => {
             console.error("Firestore query error:", err);
@@ -55,9 +73,60 @@ const Profile: React.FC = () => {
           }
         );
 
-        return () => unsubscribeEvents();
+        const userSavedEventsRef = doc(db, "userSavedEvents", currentUser.uid);
+        const unsubscribeSavedEvents = onSnapshot(userSavedEventsRef, async (docSnap) => {
+          if (docSnap.exists()) {
+            const savedEventIds = docSnap.data().savedEvents || [];
+            const savedEventsData = await Promise.all(
+              savedEventIds.map(async (eventId: string) => {
+                const eventDoc = await getDoc(doc(db, "events", eventId));
+                if (eventDoc.exists()) {
+                  return { 
+                    id: eventDoc.id, 
+                    ...eventDoc.data(), 
+                    likes: eventDoc.data().likes || 0,
+                    likedBy: eventDoc.data().likedBy || [] 
+                  } as Event;
+                }
+                return null;
+              })
+            );
+
+            const filteredAndSortedSavedEvents = savedEventsData
+              .filter((event): event is Event => event !== null)
+              .sort((a, b) => 
+                new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime()
+              );
+
+            setSavedEvents(filteredAndSortedSavedEvents);
+
+            // Update userSaves and userLikes state for saved events
+            const newUserSaves = filteredAndSortedSavedEvents.reduce((acc, event) => {
+              acc[event.id] = true;
+              return acc;
+            }, {} as { [key: string]: boolean });
+            setUserSaves(newUserSaves);
+
+            const newUserLikes = filteredAndSortedSavedEvents.reduce((acc, event) => {
+              acc[event.id] = event.likedBy.includes(currentUser.uid);
+              return acc;
+            }, {} as { [key: string]: boolean });
+            setUserLikes(prev => ({ ...prev, ...newUserLikes }));
+          } else {
+            setSavedEvents([]);
+            setUserSaves({});
+          }
+        });
+
+        return () => {
+          unsubscribeEvents();
+          unsubscribeSavedEvents();
+        };
       } else {
         setEvents([]);
+        setSavedEvents([]);
+        setUserLikes({});
+        setUserSaves({});
       }
     });
 
@@ -84,7 +153,9 @@ const Profile: React.FC = () => {
         await deleteObject(imageRef);
       }
 
-      setEvents((prevEvents) => prevEvents.filter((event) => event.id !== eventId));
+      setEvents((prevEvents) =>
+        prevEvents.filter((event) => event.id !== eventId)
+      );
     } catch (error) {
       console.error("Error deleting event:", error);
     }
@@ -94,10 +165,76 @@ const Profile: React.FC = () => {
     navigate(`/edit-event/${eventId}`);
   };
 
-  const truncateDescription = (description: string) => {
-    const lines = description.split('\n').slice(0, 3);
-    const truncated = lines.join('\n');
-    return truncated.length < description.length ? `${truncated}...` : truncated;
+  const handleLike = async (eventId: string) => {
+    if (!user) return;
+
+    const eventRef = doc(db, "events", eventId);
+    const isLiked = userLikes[eventId];
+
+    try {
+      if (isLiked) {
+        await updateDoc(eventRef, {
+          likes: increment(-1),
+          likedBy: arrayRemove(user.uid)
+        });
+        setUserLikes(prev => ({ ...prev, [eventId]: false }));
+      } else {
+        await updateDoc(eventRef, {
+          likes: increment(1),
+          likedBy: arrayUnion(user.uid)
+        });
+        setUserLikes(prev => ({ ...prev, [eventId]: true }));
+      }
+
+      // Update the events state to reflect the new like count
+      setEvents(prevEvents => 
+        prevEvents.map(event => 
+          event.id === eventId 
+            ? { ...event, likes: isLiked ? event.likes - 1 : event.likes + 1 }
+            : event
+        )
+      );
+      setSavedEvents(prevEvents => 
+        prevEvents.map(event => 
+          event.id === eventId 
+            ? { ...event, likes: isLiked ? event.likes - 1 : event.likes + 1 }
+            : event
+        )
+      );
+    } catch (error) {
+      console.error("Error updating like:", error);
+    }
+  };
+
+  const handleSave = async (eventId: string) => {
+    if (!user) return;
+
+    const userSavedEventsRef = doc(db, "userSavedEvents", user.uid);
+    const isSaved = userSaves[eventId];
+
+    try {
+      if (isSaved) {
+        await updateDoc(userSavedEventsRef, {
+          savedEvents: arrayRemove(eventId)
+        });
+        setUserSaves(prev => ({ ...prev, [eventId]: false }));
+      } else {
+        await updateDoc(userSavedEventsRef, {
+          savedEvents: arrayUnion(eventId)
+        });
+        setUserSaves(prev => ({ ...prev, [eventId]: true }));
+      }
+    } catch (error) {
+      console.error("Error updating save:", error);
+    }
+  };
+
+  const handleEventClick = (event: Event) => {
+    setSelectedEvent(event);
+  };
+
+  const handleCloseModal = () => {
+    setSelectedEvent(null);
   };
 
   if (!user) {
@@ -125,57 +262,83 @@ const Profile: React.FC = () => {
         >
           Sign Out
         </button>
-        <h3 className="text-xl font-semibold mb-4">Your Events</h3>
-        {error ? (
-          <p className="text-red-500">{error}</p>
-        ) : events.length === 0 ? (
-          <p>You haven't created any events yet.</p>
-        ) : (
-          <div className="max-w-8xl mx-auto pb-16 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {events.map((event) => (
-              <div
-                key={event.id}
-                className="event bg-slate-700 shadow-md rounded-lg overflow-hidden relative flex flex-col"
-              >
-                {event.imageUrl && (
-                  <div className="relative pt-[150%]">
-                    <img
-                      src={event.imageUrl}
-                      alt="Event"
-                      className="absolute top-0 left-0 w-full h-full object-cover"
-                    />
-                  </div>
-                )}
-                <div className="p-4 flex-grow flex flex-col justify-between">
-                  <div>
-                    <h2 className="text-xl font-bold text-white mb-2">{event.title}</h2>
-                    <p className="text-white mb-2 line-clamp-2">{truncateDescription(event.description)}</p>
-                  </div>
-                  <p className="text-white text-sm font-semibold mb-2">
-                    Date & Time: {new Date(event.dateTime).toLocaleString([], { year: 'numeric', month: '2-digit', day: '2-digit', hour: 'numeric', minute: '2-digit' })}
-                  </p>
-                </div>
-                <div className="absolute bottom-2 right-2 flex space-x-2">
-                  <button
-                    onClick={() => handleEditEvent(event.id)}
-                    className="p-1 bg-slate-500 bg-opacity-30 text-white shadow-sm hover:bg-slate-800 hover:text-purple-500 hover:border-purple-500 rounded"
-                    aria-label="Edit event"
-                  >
-                    <Settings size={20} />
-                  </button>
-                  <button
-                    onClick={() => handleDeleteEvent(event.id, event.imageUrl)}
-                    className="p-1 bg-slate-500 bg-opacity-30 text-white shadow-sm hover:bg-slate-800 hover:text-red-500 hover:border-red-500 rounded"
-                    aria-label="Delete event"
-                  >
-                    <Trash2 size={20} />
-                  </button>
-                </div>
+
+        <div className="flex justify-center mb-6">
+          <button
+            className={`px-4 py-2 mx-2 rounded-t-lg ${
+              activeTab === 'your-events'
+                ? 'bg-violet-600 text-white'
+                : 'bg-gray-200 text-gray-700'
+            }`}
+            onClick={() => setActiveTab('your-events')}
+          >
+            Your Events
+          </button>
+          <button
+            className={`px-4 py-2 mx-2 rounded-t-lg ${
+              activeTab === 'saved-events'
+                ? 'bg-violet-600 text-white'
+                : 'bg-gray-200 text-gray-700'
+            }`}
+            onClick={() => setActiveTab('saved-events')}
+          >
+            Saved Events
+          </button>
+        </div>
+
+        {activeTab === 'your-events' && (
+          <>
+            <h3 className="text-xl font-semibold mb-4">Your Events</h3>
+            {error ? (
+              <p className="text-red-500">{error}</p>
+            ) : events.length === 0 ? (
+              <p>You haven't created any events yet.</p>
+            ) : (
+              <div className="max-w-8xl mx-auto pb-16 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                {events.map((event) => (
+                  <EventCard
+                    key={event.id}
+                    event={event}
+                    isOwner={true}
+                    isLiked={userLikes[event.id]}
+                    isSaved={userSaves[event.id]}
+                    onLike={handleLike}
+                    onSave={handleSave}
+                    onEdit={handleEditEvent}
+                    onDelete={handleDeleteEvent}
+                    onClick={handleEventClick}
+                  />
+                ))}
               </div>
-            ))}
-          </div>
+            )}
+          </>
+        )}
+
+        {activeTab === 'saved-events' && (
+          <>
+            <h3 className="text-xl font-semibold mb-4">Saved Events</h3>
+            {savedEvents.length === 0 ? (
+              <p>You haven't saved any events yet.</p>
+            ) : (
+              <div className="max-w-8xl mx-auto pb-16 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                {savedEvents.map((event) => (
+                  <EventCard
+                    key={event.id}
+                    event={event}
+                    isOwner={false}
+                    isLiked={userLikes[event.id]}
+                    isSaved={true}
+                    onLike={handleLike}
+                    onSave={handleSave}
+                    onClick={handleEventClick}
+                  />
+                ))}
+              </div>
+            )}
+          </>
         )}
       </div>
+      {selectedEvent && <ViewEvent event={selectedEvent} onClose={handleCloseModal} />}
     </div>
   );
 };

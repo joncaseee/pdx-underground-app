@@ -1,21 +1,15 @@
 import React, { useState, useEffect } from "react";
-import { collection, query, orderBy, onSnapshot } from "firebase/firestore";
-import { db } from "../firebase";
+import { collection, query, orderBy, onSnapshot, doc, updateDoc, increment, arrayUnion, arrayRemove, getDoc, setDoc } from "firebase/firestore";
+import { db, auth } from "../firebase";
 import ViewEvent from "./ViewEvent";
-
-interface Event {
-  id: string;
-  title: string;
-  organizer: string;
-  description: string;
-  dateTime: string;
-  imageUrl: string;
-  userId: string;
-}
+import EventCard from "./EventCard";
+import { Event } from "../types/Event";
 
 const Home: React.FC = () => {
   const [events, setEvents] = useState<Event[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [userLikes, setUserLikes] = useState<{ [key: string]: boolean }>({});
+  const [userSaves, setUserSaves] = useState<{ [key: string]: boolean }>({});
 
   useEffect(() => {
     const now = new Date().toISOString();
@@ -29,6 +23,8 @@ const Home: React.FC = () => {
         .map((doc) => ({
           id: doc.id,
           ...doc.data(),
+          likes: doc.data().likes || 0,
+          likedBy: doc.data().likedBy || [],
         })) as Event[];
 
       const upcomingEvents = newEvents
@@ -36,16 +32,33 @@ const Home: React.FC = () => {
         .sort((a, b) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime());
 
       setEvents(upcomingEvents);
+
+      // Update userLikes and userSaves state
+      const currentUserId = auth.currentUser?.uid;
+      if (currentUserId) {
+        const newUserLikes = upcomingEvents.reduce((acc, event) => {
+          acc[event.id] = event.likedBy.includes(currentUserId);
+          return acc;
+        }, {} as { [key: string]: boolean });
+        setUserLikes(newUserLikes);
+
+        // Fetch user's saved events
+        const userSavedEventsRef = doc(db, "userSavedEvents", currentUserId);
+        getDoc(userSavedEventsRef).then((docSnap) => {
+          if (docSnap.exists()) {
+            const savedEvents = docSnap.data().savedEvents || [];
+            const newUserSaves = upcomingEvents.reduce((acc, event) => {
+              acc[event.id] = savedEvents.includes(event.id);
+              return acc;
+            }, {} as { [key: string]: boolean });
+            setUserSaves(newUserSaves);
+          }
+        });
+      }
     });
 
     return () => unsubscribe();
   }, []);
-
-  const truncateDescription = (description: string) => {
-    const lines = description.split('\n').slice(0, 3);
-    const truncated = lines.join('\n');
-    return truncated.length < description.length ? `${truncated}...` : truncated;
-  };
 
   const handleEventClick = (event: Event) => {
     setSelectedEvent(event);
@@ -53,6 +66,52 @@ const Home: React.FC = () => {
 
   const handleCloseModal = () => {
     setSelectedEvent(null);
+  };
+
+  const handleLike = async (eventId: string) => {
+    const currentUser = auth.currentUser;
+    if (!currentUser) return;
+
+    const eventRef = doc(db, "events", eventId);
+    const isLiked = userLikes[eventId];
+
+    if (isLiked) {
+      // Unlike the event
+      await updateDoc(eventRef, {
+        likes: increment(-1),
+        likedBy: arrayRemove(currentUser.uid)
+      });
+      setUserLikes(prev => ({ ...prev, [eventId]: false }));
+    } else {
+      // Like the event
+      await updateDoc(eventRef, {
+        likes: increment(1),
+        likedBy: arrayUnion(currentUser.uid)
+      });
+      setUserLikes(prev => ({ ...prev, [eventId]: true }));
+    }
+  };
+
+  const handleSave = async (eventId: string) => {
+    const currentUser = auth.currentUser;
+    if (!currentUser) return;
+
+    const userSavedEventsRef = doc(db, "userSavedEvents", currentUser.uid);
+    const isSaved = userSaves[eventId];
+
+    if (isSaved) {
+      // Unsave the event
+      await updateDoc(userSavedEventsRef, {
+        savedEvents: arrayRemove(eventId)
+      });
+      setUserSaves(prev => ({ ...prev, [eventId]: false }));
+    } else {
+      // Save the event
+      await setDoc(userSavedEventsRef, {
+        savedEvents: arrayUnion(eventId)
+      }, { merge: true });
+      setUserSaves(prev => ({ ...prev, [eventId]: true }));
+    }
   };
 
   return (
@@ -65,33 +124,16 @@ const Home: React.FC = () => {
       </h3>
       <div className="max-w-8xl mx-auto pb-16 grid grid-cols-1 px-8 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
         {events.map((event) => (
-          <div
+          <EventCard
             key={event.id}
-            className="event bg-slate-700 shadow-md rounded-lg overflow-hidden cursor-pointer hover:bg-slate-600 hover:shadow-lg transition-colors duration-200 flex flex-col"
-            onClick={() => handleEventClick(event)}
-          >
-            {event.imageUrl && (
-              <div className="relative pt-[150%]">
-                <img
-                  src={event.imageUrl}
-                  alt="Event"
-                  className="absolute top-0 left-0 w-full h-full object-cover"
-                />
-              </div>
-            )}
-            <div className="p-4 flex-grow flex flex-col justify-between">
-              <div>
-                <h2 className="text-xl font-bold text-white mb-2">
-                  {event.title}
-                </h2>
-                <p className="text-white text-sm mb-2">{event.organizer}</p>
-                <p className="text-white mb-2 line-clamp-3">{truncateDescription(event.description)}</p>
-              </div>
-              <p className="text-white font-semibold mt-2">
-                Date & Time: {new Date(event.dateTime).toLocaleString([], { year: 'numeric', month: '2-digit', day: '2-digit', hour: 'numeric', minute: '2-digit' })}
-              </p>
-            </div>
-          </div>
+            event={event}
+            isOwner={false}
+            isLiked={userLikes[event.id]}
+            isSaved={userSaves[event.id]}
+            onLike={handleLike}
+            onSave={handleSave}
+            onClick={handleEventClick}
+          />
         ))}
       </div>
       {selectedEvent && <ViewEvent event={selectedEvent} onClose={handleCloseModal} />}

@@ -34,7 +34,7 @@ const AddEvent: React.FC = () => {
     const auth = getAuth();
     const user = auth.currentUser;
     if (!user) return;
-
+  
     try {
       let imageUrl = "";
       if (image) {
@@ -42,7 +42,7 @@ const AddEvent: React.FC = () => {
         await uploadBytes(imageRef, image);
         imageUrl = await getDownloadURL(imageRef);
       }
-
+  
       await addDoc(collection(db, "events"), {
         userId: user.uid,
         title,
@@ -50,11 +50,13 @@ const AddEvent: React.FC = () => {
         description,
         dateTime,
         imageUrl,
+        likes: 0,
+        likedBy: [],
         createdAt: serverTimestamp(),
       });
 
       setTitle("");
-      setOrganizer("")
+      setOrganizer("");
       setDescription("");
       setDateTime("");
       setImage(null);
@@ -73,7 +75,7 @@ const AddEvent: React.FC = () => {
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         placeholder="Event Title"
-        className="w-full p-2 mb-4  rounded bg-slate-600 text-white"
+        className="w-full p-2 mb-4 rounded bg-slate-600 text-white"
         required
       />
       <input
@@ -81,21 +83,21 @@ const AddEvent: React.FC = () => {
         value={organizer}
         onChange={(e) => setOrganizer(e.target.value)}
         placeholder="Event Organizer"
-        className="w-full p-2 mb-4  rounded bg-slate-600 text-white"
+        className="w-full p-2 mb-4 rounded bg-slate-600 text-white"
         required
       />
       <textarea
         value={description}
         onChange={(e) => setDescription(e.target.value)}
         placeholder="Event Description"
-        className="w-full p-2 mb-4  rounded bg-slate-600 text-white"
+        className="w-full p-2 mb-4 rounded bg-slate-600 text-white"
         required
       />
       <input
         type="datetime-local"
         value={dateTime}
         onChange={(e) => setDateTime(e.target.value)}
-        className="w-full p-2 mb-4  rounded bg-slate-600 text-white"
+        className="w-full p-2 mb-4 rounded bg-slate-600 text-white"
         required
       />
       {previewUrl && (
@@ -103,7 +105,7 @@ const AddEvent: React.FC = () => {
           <img src={previewUrl} alt="Preview" className="max-w-full h-auto rounded border border-gray-300" />
         </div>
       )}
-      <div className="flex justify-center items-center space-x-8">
+      <div className="flex justify-center items-center space-x-8 ">
         <button
           type="button"
           onClick={handleFileButtonClick}
@@ -120,7 +122,8 @@ const AddEvent: React.FC = () => {
         />
         <button
           type="submit"
-          className="button mb-4 px-4 py-2 bg-purple-500 text-white rounded"
+          className="button mb-4 px-[1] py-2 text-white rounded bg-gradient-to-r from-rose-500 to-indigo-600 border-spacing-2 border-l-rose-500 border-r-indigo-600
+                       hover:bg-zinc-800"
         >
           Create Event
         </button>
