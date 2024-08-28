@@ -4,12 +4,14 @@ import { db, auth } from "../firebase";
 import ViewEvent from "./ViewEvent";
 import EventCard from "./EventCard";
 import { Event } from "../types/Event";
+import { ClipLoader } from "react-spinners"; // Importing the spinner
 
 const Home: React.FC = () => {
   const [events, setEvents] = useState<Event[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [userLikes, setUserLikes] = useState<{ [key: string]: boolean }>({});
   const [userSaves, setUserSaves] = useState<{ [key: string]: boolean }>({});
+  const [loading, setLoading] = useState(true); // State to manage loading status
 
   useEffect(() => {
     const now = new Date().toISOString();
@@ -55,6 +57,8 @@ const Home: React.FC = () => {
           }
         });
       }
+
+      setLoading(false); // Set loading to false after data is fetched
     });
 
     return () => unsubscribe();
@@ -113,6 +117,14 @@ const Home: React.FC = () => {
       setUserSaves(prev => ({ ...prev, [eventId]: true }));
     }
   };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <ClipLoader size={50} color={"#8b5cf6"} loading={loading} />
+      </div>
+    );
+  }
 
   return (
     <div className="home p-4">

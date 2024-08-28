@@ -4,6 +4,7 @@ import { getAuth } from "firebase/auth";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { db, storage } from "../firebase";
+import { ClipLoader } from "react-spinners"; 
 
 interface Event {
   id: string;
@@ -26,6 +27,7 @@ const EditEvent: React.FC = () => {
   const navigate = useNavigate();
   const { eventId } = useParams<{ eventId: string }>();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [loading] = useState(true); 
 
   useEffect(() => {
     const fetchEvent = async () => {
@@ -99,7 +101,9 @@ const EditEvent: React.FC = () => {
   };
 
   if (!event) {
-    return <div>Loading...</div>;
+    return <div className="flex justify-center items-center h-screen">
+    <ClipLoader size={50} color={"#8b5cf6"} loading={loading} />
+  </div>;
   }
 
   return (

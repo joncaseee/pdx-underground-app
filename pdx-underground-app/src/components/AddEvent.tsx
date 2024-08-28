@@ -109,7 +109,7 @@ const AddEvent: React.FC = () => {
         <button
           type="button"
           onClick={handleFileButtonClick}
-          className="custom-file-button mb-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          className="custom-file-button mb-4 px-4 py-2 bg-zinc-800 text-white rounded hover:bg-zinc-900"
         >
           Choose Image
         </button>
@@ -122,7 +122,7 @@ const AddEvent: React.FC = () => {
         />
         <button
           type="submit"
-          className="button mb-4 px-[1] py-2 text-white rounded bg-gradient-to-r from-rose-500 to-indigo-600 border-spacing-2 border-l-rose-500 border-r-indigo-600
+          className="button mb-4 px-[1] py-2 text-white rounded bg-gradient-to-r from-teal-600 to-violet-500 border-spacing-2 border-l-teal-600 border-r-violet-600
                        hover:bg-zinc-800"
         >
           Create Event

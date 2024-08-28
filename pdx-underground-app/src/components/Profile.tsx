@@ -31,12 +31,20 @@ const Profile: React.FC = () => {
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [userLikes, setUserLikes] = useState<{ [key: string]: boolean }>({});
   const [userSaves, setUserSaves] = useState<{ [key: string]: boolean }>({});
+  const [alias, setAlias] = useState("");
+  const [isEditingAlias, setIsEditingAlias] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
     const unsubscribeAuth = auth.onAuthStateChanged(async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
+        const userProfileRef = doc(db, 'userProfiles', currentUser.uid);
+        const userProfileSnap = await getDoc(userProfileRef);
+        if (userProfileSnap.exists()) {
+          setAlias(userProfileSnap.data().alias);
+        }
+
         const eventsQuery = query(
           collection(db, "events"),
           where("userId", "==", currentUser.uid),
@@ -60,7 +68,6 @@ const Profile: React.FC = () => {
             setEvents(sortedEvents);
             setError(null);
 
-            // Update userLikes state
             const newUserLikes = sortedEvents.reduce((acc, event) => {
               acc[event.id] = event.likedBy.includes(currentUser.uid);
               return acc;
@@ -100,7 +107,6 @@ const Profile: React.FC = () => {
 
             setSavedEvents(filteredAndSortedSavedEvents);
 
-            // Update userSaves and userLikes state for saved events
             const newUserSaves = filteredAndSortedSavedEvents.reduce((acc, event) => {
               acc[event.id] = true;
               return acc;
@@ -186,7 +192,6 @@ const Profile: React.FC = () => {
         setUserLikes(prev => ({ ...prev, [eventId]: true }));
       }
 
-      // Update the events state to reflect the new like count
       setEvents(prevEvents => 
         prevEvents.map(event => 
           event.id === eventId 
@@ -237,6 +242,28 @@ const Profile: React.FC = () => {
     setSelectedEvent(null);
   };
 
+  const handleEditAlias = () => {
+    setIsEditingAlias(true);
+  };
+
+  const handleSaveAlias = async () => {
+    if (!user) return;
+
+    try {
+      const userProfileRef = doc(db, 'userProfiles', user.uid);
+      await updateDoc(userProfileRef, { alias: alias });
+      setIsEditingAlias(false);
+    } catch (error) {
+      console.error("Error updating alias:", error);
+    }
+  };
+
+  const handleViewPublicProfile = () => {
+    if (user) {
+      navigate(`/user/${user.uid}`);
+    }
+  };
+
   if (!user) {
     return (
       <div className="profile p-4">
@@ -255,12 +282,48 @@ const Profile: React.FC = () => {
   return (
     <div className="profile p-4">
       <h2 className="text-2xl font-bold mb-4 text-center">Your Profile</h2>
-      <div className="mx-auto">
+      <div className="mx-6">
         <button
           onClick={handleSignOut}
           className="text-white font-thin bg-transparent absolute right-4 top-4 px-4 py-2 rounded mb-4"
         >
           Sign Out
+        </button>
+
+        <div className="mb-4">
+          {isEditingAlias ? (
+            <div className="flex items-center">
+              <input
+                type="text"
+                value={alias}
+                onChange={(e) => setAlias(e.target.value)}
+                className="mr-2 p-2 border rounded"
+              />
+              <button
+                onClick={handleSaveAlias}
+                className="bg-blue-500 text-white px-4 py-2 rounded"
+              >
+                Save
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center">
+              <h3 className="text-xl font-semibold mr-2">Alias: {alias}</h3>
+              <button
+                onClick={handleEditAlias}
+                className="text-blue-500 underline"
+              >
+                Edit
+              </button>
+            </div>
+          )}
+        </div>
+
+        <button
+          onClick={handleViewPublicProfile}
+          className="bg-green-500 text-white px-4 py-2 rounded mb-4"
+        >
+          View Public Profile
         </button>
 
         <div className="flex justify-center mb-6">

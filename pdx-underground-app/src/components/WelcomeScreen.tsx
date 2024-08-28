@@ -1,4 +1,5 @@
-import SignIn from "./SignIn";
+import React from 'react';
+import { Link } from 'react-router-dom';
 
 const WelcomeScreen: React.FC = () => (
   <div className="welcome-screen p-8 max-w-2xl mx-auto">
@@ -19,7 +20,14 @@ const WelcomeScreen: React.FC = () => (
       <li>View a public feed of all upcoming events</li>
       <li>Personal profile page to edit and delete events</li>
     </ul>
-    <SignIn />
+    <div className="flex justify-center space-x-4">
+      <Link to="/signup" className="bg-teal-600 text-white px-6 py-2 rounded-lg hover:bg-teal-700 transition duration-300">
+        Sign Up
+      </Link>
+      <Link to="/signin" className="bg-violet-500 text-white px-6 py-2 rounded-lg hover:bg-violet-600 transition duration-300">
+        Sign In
+      </Link>
+    </div>
   </div>
 );
 
