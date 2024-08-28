@@ -98,23 +98,31 @@ const Home: React.FC = () => {
 
   const handleSave = async (eventId: string) => {
     const currentUser = auth.currentUser;
-    if (!currentUser) return;
-
+    if (!currentUser) {
+      console.error("No user logged in");
+      return;
+    }
+  
     const userSavedEventsRef = doc(db, "userSavedEvents", currentUser.uid);
     const isSaved = userSaves[eventId];
-
-    if (isSaved) {
-      // Unsave the event
-      await updateDoc(userSavedEventsRef, {
-        savedEvents: arrayRemove(eventId)
-      });
-      setUserSaves(prev => ({ ...prev, [eventId]: false }));
-    } else {
-      // Save the event
-      await setDoc(userSavedEventsRef, {
-        savedEvents: arrayUnion(eventId)
-      }, { merge: true });
-      setUserSaves(prev => ({ ...prev, [eventId]: true }));
+  
+    try {
+      if (isSaved) {
+        // Unsave the event
+        await updateDoc(userSavedEventsRef, {
+          savedEvents: arrayRemove(eventId)
+        });
+        console.log("Event unsaved successfully");
+      } else {
+        // Save the event
+        await setDoc(userSavedEventsRef, {
+          savedEvents: arrayUnion(eventId)
+        }, { merge: true });
+        console.log("Event saved successfully");
+      }
+      setUserSaves(prev => ({ ...prev, [eventId]: !isSaved }));
+    } catch (error) {
+      console.error("Error updating save:", error);
     }
   };
 
