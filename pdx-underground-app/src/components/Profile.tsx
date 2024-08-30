@@ -22,7 +22,7 @@ import { Link, useNavigate } from "react-router-dom";
 import ViewEvent from "./ViewEvent";
 import EventCard from "./EventCard";
 import { Event } from "../types/Event";
-import { ClipLoader } from "react-spinners";
+// import { ClipLoader } from "react-spinners";
 
 interface UserProfile {
   alias: string;
@@ -409,7 +409,7 @@ const Profile: React.FC = () => {
           {newProfilePicture && (
             <button
               onClick={handleUpdateProfilePicture}
-              className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition duration-600 transition duration-300"
+              className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition duration-300"
             >
               Update Profile Picture
             </button>
