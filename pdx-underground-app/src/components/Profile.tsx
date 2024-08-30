@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { User } from "firebase/auth";
 import {
   collection,
@@ -14,13 +14,14 @@ import {
   arrayUnion,
   increment,
 } from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { signOut } from "firebase/auth";
 import { auth, db, storage } from "../firebase";
 import { Link, useNavigate } from "react-router-dom";
-import { ref, deleteObject } from "firebase/storage";
 import ViewEvent from "./ViewEvent";
 import EventCard from "./EventCard";
 import { Event } from "../types/Event";
+import { ClipLoader } from "react-spinners";
 
 const Profile: React.FC = () => {
   const [events, setEvents] = useState<Event[]>([]);
@@ -33,6 +34,9 @@ const Profile: React.FC = () => {
   const [userSaves, setUserSaves] = useState<{ [key: string]: boolean }>({});
   const [alias, setAlias] = useState("");
   const [isEditingAlias, setIsEditingAlias] = useState(false);
+  const [profilePictureUrl, setProfilePictureUrl] = useState<string | null>(null);
+  const [newProfilePicture, setNewProfilePicture] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -42,7 +46,9 @@ const Profile: React.FC = () => {
         const userProfileRef = doc(db, 'userProfiles', currentUser.uid);
         const userProfileSnap = await getDoc(userProfileRef);
         if (userProfileSnap.exists()) {
-          setAlias(userProfileSnap.data().alias);
+          const userData = userProfileSnap.data();
+          setAlias(userData.alias);
+          setProfilePictureUrl(userData.profilePictureUrl || null);
         }
 
         const eventsQuery = query(
@@ -264,6 +270,42 @@ const Profile: React.FC = () => {
     }
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setNewProfilePicture(e.target.files[0]);
+    }
+  };
+
+  const handleFileButtonClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleUpdateProfilePicture = async () => {
+    if (!user || !newProfilePicture) return;
+
+    try {
+      // Delete old profile picture if it exists
+      if (profilePictureUrl) {
+        const oldImageRef = ref(storage, profilePictureUrl);
+        await deleteObject(oldImageRef);
+      }
+
+      // Upload new profile picture
+      const storageRef = ref(storage, `profilePictures/${user.uid}/${newProfilePicture.name}`);
+      await uploadBytes(storageRef, newProfilePicture);
+      const newProfilePictureUrl = await getDownloadURL(storageRef);
+
+      // Update Firestore
+      const userProfileRef = doc(db, 'userProfiles', user.uid);
+      await updateDoc(userProfileRef, { profilePictureUrl: newProfilePictureUrl });
+
+      setProfilePictureUrl(newProfilePictureUrl);
+      setNewProfilePicture(null);
+    } catch (error) {
+      console.error("Error updating profile picture:", error);
+    }
+  };
+
   if (!user) {
     return (
       <div className="profile p-4">
@@ -290,32 +332,67 @@ const Profile: React.FC = () => {
           Sign Out
         </button>
 
+        <div className="mb-4 flex items-center">
+          <div className="mr-4">
+            {profilePictureUrl ? (
+              <img src={profilePictureUrl} alt="Profile" className="w-24 h-24 rounded-full object-cover" />
+            ) : (
+              <div className="w-24 h-24 rounded-full bg-gray-300 flex items-center justify-center">
+                <span className="text-gray-600 text-2xl">{alias[0]?.toUpperCase()}</span>
+              </div>
+            )}
+          </div>
+          <div>
+            {isEditingAlias ? (
+              <div className="flex items-center">
+                <input
+                  type="text"
+                  value={alias}
+                  onChange={(e) => setAlias(e.target.value)}
+                  className="mr-2 p-2 border rounded"
+                />
+                <button
+                  onClick={handleSaveAlias}
+                  className="bg-blue-500 text-white px-4 py-2 rounded"
+                >
+                  Save
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center">
+                <h3 className="text-xl font-semibold mr-2">Alias: {alias}</h3>
+                <button
+                  onClick={handleEditAlias}
+                  className="text-blue-500 underline"
+                >
+                  Edit
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
         <div className="mb-4">
-          {isEditingAlias ? (
-            <div className="flex items-center">
-              <input
-                type="text"
-                value={alias}
-                onChange={(e) => setAlias(e.target.value)}
-                className="mr-2 p-2 border rounded"
-              />
-              <button
-                onClick={handleSaveAlias}
-                className="bg-blue-500 text-white px-4 py-2 rounded"
-              >
-                Save
-              </button>
-            </div>
-          ) : (
-            <div className="flex items-center">
-              <h3 className="text-xl font-semibold mr-2">Alias: {alias}</h3>
-              <button
-                onClick={handleEditAlias}
-                className="text-blue-500 underline"
-              >
-                Edit
-              </button>
-            </div>
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            accept="image/*"
+            className="hidden"
+          />
+          <button
+            onClick={handleFileButtonClick}
+            className="bg-gray-200 text-gray-700 px-4 py-2 rounded hover:bg-gray-300 transition duration-300 mr-2"
+          >
+            Choose New Profile Picture
+          </button>
+          {newProfilePicture && (
+            <button
+              onClick={handleUpdateProfilePicture}
+              className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition duration-300"
+            >
+              Update Profile Picture
+            </button>
           )}
         </div>
 
@@ -346,7 +423,7 @@ const Profile: React.FC = () => {
             onClick={() => setActiveTab('saved-events')}
           >
             Saved Events
-          </button>
+            </button>
         </div>
 
         {activeTab === 'your-events' && (

@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, User } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useNavigate } from 'react-router-dom';
-import { auth, db } from '../firebase';
+import { auth, db, storage } from '../firebase';
 
 type UserRole = 'artist' | 'promoter';
 
@@ -12,6 +13,8 @@ const SignUp: React.FC = () => {
   const [alias, setAlias] = useState('');
   const [role, setRole] = useState<UserRole | null>(null);
   const [error, setError] = useState('');
+  const [profilePicture, setProfilePicture] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
   const handleSignUp = async (e: React.FormEvent) => {
@@ -45,11 +48,29 @@ const SignUp: React.FC = () => {
   };
 
   const createUserProfile = async (user: User) => {
+    let profilePictureUrl = '';
+    if (profilePicture) {
+      const storageRef = ref(storage, `profilePictures/${user.uid}/${profilePicture.name}`);
+      await uploadBytes(storageRef, profilePicture);
+      profilePictureUrl = await getDownloadURL(storageRef);
+    }
+
     await setDoc(doc(db, 'userProfiles', user.uid), {
       alias: alias,
       role: role,
       email: user.email,
+      profilePictureUrl: profilePictureUrl,
     });
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setProfilePicture(e.target.files[0]);
+    }
+  };
+
+  const handleFileButtonClick = () => {
+    fileInputRef.current?.click();
   };
 
   return (
@@ -108,6 +129,23 @@ const SignUp: React.FC = () => {
             </label>
           </div>
         </div>
+        <div className="flex items-center space-x-4">
+          <button
+            type="button"
+            onClick={handleFileButtonClick}
+            className="bg-gray-200 text-gray-700 px-4 py-2 rounded hover:bg-gray-300 transition duration-300"
+          >
+            Choose Profile Picture
+          </button>
+          {profilePicture && <span>{profilePicture.name}</span>}
+        </div>
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleFileChange}
+          accept="image/*"
+          className="hidden"
+        />
         <button type="submit" className="w-full bg-teal-600 text-white p-2 rounded hover:bg-teal-700 transition duration-300">
           Sign Up
         </button>

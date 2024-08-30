@@ -50,7 +50,20 @@ const EventCard: React.FC<EventCardProps> = ({
         <div className="p-4 flex-grow flex flex-col justify-between">
           <div>
             <h2 className="text-xl font-bold text-white mb-2">{event.title}</h2>
-            <p className="text-white text-sm mb-2">{event.organizer}</p>
+            <div className="flex items-center mb-2">
+              {event.organizerProfilePicture ? (
+                <img
+                  src={event.organizerProfilePicture}
+                  alt="Organizer"
+                  className="w-6 h-6 rounded-full mr-2 object-cover"
+                />
+              ) : (
+                <div className="w-6 h-6 rounded-full mr-2 bg-gray-300 flex items-center justify-center">
+                  <span className="text-gray-600 text-xs">{event.organizer[0]?.toUpperCase()}</span>
+                </div>
+              )}
+              <p className="text-white text-sm">{event.organizer}</p>
+            </div>
             <p className="text-white mb-2 line-clamp-3">{truncateDescription(event.description)}</p>
           </div>
           <p className="text-white font-semibold mt-2">
@@ -97,17 +110,17 @@ const EventCard: React.FC<EventCardProps> = ({
               <Bookmark size={20} fill={isSaved ? 'currentColor' : 'none'} />
             </button>
             <button
-        onClick={(e) => {
-          e.stopPropagation();
-          onLike(event.id);
-        }}
-        className={`flex items-center space-x-1 bg-transparent hover:bg-zinc-700 hover:text-indigo-500 font-bold py-1 px-2 rounded ${
-          isLiked ? 'text-rose-500' : 'text-white'
-        }`}
-      >
-        <Heart size={20} fill={isLiked ? 'currentColor' : 'none'} />
-        <span>{event.likes}</span>
-      </button>
+              onClick={(e) => {
+                e.stopPropagation();
+                onLike(event.id);
+              }}
+              className={`flex items-center space-x-1 bg-transparent hover:bg-zinc-700 hover:text-indigo-500 font-bold py-1 px-2 rounded ${
+                isLiked ? 'text-rose-500' : 'text-white'
+              }`}
+            >
+              <Heart size={20} fill={isLiked ? 'currentColor' : 'none'} />
+              <span>{event.likes}</span>
+            </button>
           </div>
         </div>
       </div>
