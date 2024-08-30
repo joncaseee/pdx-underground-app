@@ -25,12 +25,6 @@ const EventCard: React.FC<EventCardProps> = ({
   onDelete,
   onClick,
 }) => {
-  const truncateDescription = (description: string) => {
-    const lines = description.split('\n').slice(0, 3);
-    const truncated = lines.join('\n');
-    return truncated.length < description.length ? `${truncated}...` : truncated;
-  };
-
   return (
     <div
       className="event p-[1px] bg-gradient-to-br mx-2 my-3 from-teal-600 to-violet-400 rounded-lg overflow-hidden cursor-pointer hover:shadow-lg 
@@ -64,10 +58,9 @@ const EventCard: React.FC<EventCardProps> = ({
               )}
               <p className="text-white text-sm">{event.organizer}</p>
             </div>
-            <p className="text-white mb-2 line-clamp-3">{truncateDescription(event.description)}</p>
           </div>
           <p className="text-white font-semibold mt-2">
-            Date & Time: {new Date(event.dateTime).toLocaleString([], { year: 'numeric', month: '2-digit', day: '2-digit', hour: 'numeric', minute: '2-digit' })}
+            {new Date(event.dateTime).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
           </p>
         </div>
         <div className="p-2 flex justify-between items-center">
