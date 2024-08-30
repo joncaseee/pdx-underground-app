@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs, QueryDocumentSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 import EventCard from './EventCard';
 import { Event } from '../types/Event';
+import { ClipLoader } from "react-spinners"; 
 
 interface UserProfile {
   alias: string;
   role: string;
+  profilePictureUrl?: string;
 }
 
 const UserProfile: React.FC = () => {
@@ -15,44 +17,86 @@ const UserProfile: React.FC = () => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [postedEvents, setPostedEvents] = useState<Event[]>([]);
   const [savedEvents, setSavedEvents] = useState<Event[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchUserProfile = async () => {
       if (!userId) return;
 
-      const userProfileRef = doc(db, 'userProfiles', userId);
-      const userProfileSnap = await getDoc(userProfileRef);
+      try {
+        const userProfileRef = doc(db, 'userProfiles', userId);
+        const userProfileSnap = await getDoc(userProfileRef);
 
-      if (userProfileSnap.exists()) {
-        setProfile(userProfileSnap.data() as UserProfile);
-      }
+        if (userProfileSnap.exists()) {
+          setProfile(userProfileSnap.data() as UserProfile);
+        }
 
-      // Fetch posted events
-      const postedEventsQuery = query(collection(db, 'events'), where('userId', '==', userId));
-      const postedEventsSnap = await getDocs(postedEventsQuery);
-      const postedEventsData = postedEventsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Event));
-      setPostedEvents(postedEventsData);
+        // Fetch posted events
+        const postedEventsQuery = query(collection(db, 'events'), where('userId', '==', userId));
+        const postedEventsSnap = await getDocs(postedEventsQuery);
+        const postedEventsData = await Promise.all(postedEventsSnap.docs.map(async (docSnapshot: QueryDocumentSnapshot) => {
+          const eventData = docSnapshot.data();
+          const organizerProfileRef = doc(db, 'userProfiles', eventData.userId);
+          const organizerProfileSnap = await getDoc(organizerProfileRef);
+          const organizerProfileData = organizerProfileSnap.exists() ? organizerProfileSnap.data() as UserProfile : null;
 
-      // Fetch saved events
-      const savedEventsRef = doc(db, 'userSavedEvents', userId);
-      const savedEventsSnap = await getDoc(savedEventsRef);
-      if (savedEventsSnap.exists()) {
-        const savedEventIds = savedEventsSnap.data().savedEvents || [];
-        const savedEventsData = await Promise.all(
-          savedEventIds.map(async (eventId: string) => {
-            const eventDoc = await getDoc(doc(db, 'events', eventId));
-            return eventDoc.exists() ? { id: eventDoc.id, ...eventDoc.data() } as Event : null;
-          })
-        );
-        setSavedEvents(savedEventsData.filter((event): event is Event => event !== null));
+          return {
+            id: docSnapshot.id,
+            ...eventData,
+            likes: eventData.likes || 0,
+            likedBy: eventData.likedBy || [],
+            organizerProfilePicture: organizerProfileData?.profilePictureUrl || '',
+          } as Event;
+        }));
+        setPostedEvents(postedEventsData);
+
+        // Fetch saved events
+        const savedEventsRef = doc(db, 'userSavedEvents', userId);
+        const savedEventsSnap = await getDoc(savedEventsRef);
+        if (savedEventsSnap.exists()) {
+          const savedEventIds = savedEventsSnap.data().savedEvents || [];
+          const savedEventsData = await Promise.all(
+            savedEventIds.map(async (eventId: string) => {
+              const eventDoc = await getDoc(doc(db, 'events', eventId));
+              if (eventDoc.exists()) {
+                const eventData = eventDoc.data();
+                const organizerProfileRef = doc(db, 'userProfiles', eventData.userId);
+                const organizerProfileSnap = await getDoc(organizerProfileRef);
+                const organizerProfileData = organizerProfileSnap.exists() ? organizerProfileSnap.data() as UserProfile : null;
+
+                return {
+                  id: eventDoc.id,
+                  ...eventData,
+                  likes: eventData.likes || 0,
+                  likedBy: eventData.likedBy || [],
+                  organizerProfilePicture: organizerProfileData?.profilePictureUrl || '',
+                } as Event;
+              }
+              return null;
+            })
+          );
+          setSavedEvents(savedEventsData.filter((event): event is Event => event !== null));
+        }
+        setLoading(false);
+      } catch (error) {
+        console.error("Error fetching user profile data:", error);
+        setLoading(false);
       }
     };
 
     fetchUserProfile();
   }, [userId]);
 
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <ClipLoader size={50} color={"#8b5cf6"} loading={loading} />
+      </div>
+    );
+  }
+
   if (!profile) {
-    return <div>Loading...</div>;
+    return <div>User profile not found.</div>;
   }
 
   return (

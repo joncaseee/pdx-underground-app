@@ -13,6 +13,7 @@ import {
   arrayRemove,
   arrayUnion,
   increment,
+  QueryDocumentSnapshot
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { signOut } from "firebase/auth";
@@ -22,6 +23,11 @@ import ViewEvent from "./ViewEvent";
 import EventCard from "./EventCard";
 import { Event } from "../types/Event";
 import { ClipLoader } from "react-spinners";
+
+interface UserProfile {
+  alias: string;
+  profilePictureUrl?: string;
+}
 
 const Profile: React.FC = () => {
   const [events, setEvents] = useState<Event[]>([]);
@@ -46,7 +52,7 @@ const Profile: React.FC = () => {
         const userProfileRef = doc(db, 'userProfiles', currentUser.uid);
         const userProfileSnap = await getDoc(userProfileRef);
         if (userProfileSnap.exists()) {
-          const userData = userProfileSnap.data();
+          const userData = userProfileSnap.data() as UserProfile;
           setAlias(userData.alias);
           setProfilePictureUrl(userData.profilePictureUrl || null);
         }
@@ -59,13 +65,21 @@ const Profile: React.FC = () => {
 
         const unsubscribeEvents = onSnapshot(
           eventsQuery,
-          (snapshot) => {
-            const newEvents = snapshot.docs.map((doc) => ({
-              id: doc.id,
-              ...doc.data(),
-              likes: doc.data().likes || 0,
-              likedBy: doc.data().likedBy || [],
-            })) as Event[];
+          async (snapshot) => {
+            const newEvents = await Promise.all(snapshot.docs.map(async (docSnapshot: QueryDocumentSnapshot) => {
+              const eventData = docSnapshot.data();
+              const organizerProfileRef = doc(db, 'userProfiles', eventData.userId);
+              const organizerProfileSnap = await getDoc(organizerProfileRef);
+              const organizerProfileData = organizerProfileSnap.exists() ? organizerProfileSnap.data() as UserProfile : null;
+
+              return {
+                id: docSnapshot.id,
+                ...eventData,
+                likes: eventData.likes || 0,
+                likedBy: eventData.likedBy || [],
+                organizerProfilePicture: organizerProfileData?.profilePictureUrl || '',
+              } as Event;
+            }));
 
             const sortedEvents = newEvents.sort((a, b) => 
               new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime()
@@ -94,11 +108,17 @@ const Profile: React.FC = () => {
               savedEventIds.map(async (eventId: string) => {
                 const eventDoc = await getDoc(doc(db, "events", eventId));
                 if (eventDoc.exists()) {
+                  const eventData = eventDoc.data();
+                  const organizerProfileRef = doc(db, 'userProfiles', eventData.userId);
+                  const organizerProfileSnap = await getDoc(organizerProfileRef);
+                  const organizerProfileData = organizerProfileSnap.exists() ? organizerProfileSnap.data() as UserProfile : null;
+
                   return { 
                     id: eventDoc.id, 
-                    ...eventDoc.data(), 
-                    likes: eventDoc.data().likes || 0,
-                    likedBy: eventDoc.data().likedBy || [] 
+                    ...eventData, 
+                    likes: eventData.likes || 0,
+                    likedBy: eventData.likedBy || [],
+                    organizerProfilePicture: organizerProfileData?.profilePictureUrl || '',
                   } as Event;
                 }
                 return null;
@@ -389,7 +409,7 @@ const Profile: React.FC = () => {
           {newProfilePicture && (
             <button
               onClick={handleUpdateProfilePicture}
-              className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition duration-300"
+              className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition duration-600 transition duration-300"
             >
               Update Profile Picture
             </button>
@@ -423,7 +443,7 @@ const Profile: React.FC = () => {
             onClick={() => setActiveTab('saved-events')}
           >
             Saved Events
-            </button>
+          </button>
         </div>
 
         {activeTab === 'your-events' && (

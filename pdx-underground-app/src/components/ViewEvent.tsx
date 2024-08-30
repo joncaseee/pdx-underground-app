@@ -8,11 +8,13 @@ interface Event {
   id: string;
   title: string;
   organizer: string;
+  organizerProfilePicture: string;
   description: string;
   dateTime: string;
   imageUrl: string;
   likes: number;
   likedBy: string[];
+  userId: string;
 }
 
 interface ViewEventProps {
@@ -31,23 +33,41 @@ const ViewEvent: React.FC<ViewEventProps> = ({ event, onClose }) => {
     const fetchEventData = async () => {
       const currentUser = auth.currentUser;
       if (currentUser) {
-        // Fetch the latest event data
-        const eventDoc = await getDoc(doc(db, "events", event.id));
-        if (eventDoc.exists()) {
-          const latestEventData = eventDoc.data() as Event;
-          setEventData(latestEventData);
-          setLikesCount(latestEventData.likes || 0);
-          setIsLiked(latestEventData.likedBy?.includes(currentUser.uid) || false);
-        }
+        try {
+          // Fetch the latest event data
+          const eventDoc = await getDoc(doc(db, "events", event.id));
+          if (eventDoc.exists()) {
+            const latestEventData = eventDoc.data() as Event;
+            
+            // Fetch organizer profile data
+            const organizerProfileRef = doc(db, 'userProfiles', latestEventData.userId);
+            const organizerProfileSnap = await getDoc(organizerProfileRef);
+            const organizerProfileData = organizerProfileSnap.exists() ? organizerProfileSnap.data() : null;
+            
+            setEventData({
+              ...latestEventData,
+              id: eventDoc.id,
+              likes: latestEventData.likes || 0,
+              likedBy: latestEventData.likedBy || [],
+              organizerProfilePicture: organizerProfileData?.profilePictureUrl || '',
+            });
+            setLikesCount(latestEventData.likes || 0);
+            setIsLiked(latestEventData.likedBy?.includes(currentUser.uid) || false);
+          }
 
-        // Check if the event is saved
-        const userSavedEventsDoc = await getDoc(doc(db, "userSavedEvents", currentUser.uid));
-        if (userSavedEventsDoc.exists()) {
-          const savedEvents = userSavedEventsDoc.data().savedEvents || [];
-          setIsSaved(savedEvents.includes(event.id));
+          // Check if the event is saved
+          const userSavedEventsDoc = await getDoc(doc(db, "userSavedEvents", currentUser.uid));
+          if (userSavedEventsDoc.exists()) {
+            const savedEvents = userSavedEventsDoc.data().savedEvents || [];
+            setIsSaved(savedEvents.includes(event.id));
+          }
+          
+          setLoading(false);
+        } catch (error) {
+          console.error("Error fetching event data:", error);
+          setLoading(false);
         }
       }
-      setLoading(false);
     };
 
     fetchEventData();
@@ -59,22 +79,26 @@ const ViewEvent: React.FC<ViewEventProps> = ({ event, onClose }) => {
 
     const eventRef = doc(db, "events", event.id);
 
-    if (isLiked) {
-      // Unlike the event
-      await updateDoc(eventRef, {
-        likes: increment(-1),
-        likedBy: arrayRemove(currentUser.uid)
-      });
-      setIsLiked(false);
-      setLikesCount(prev => prev - 1);
-    } else {
-      // Like the event
-      await updateDoc(eventRef, {
-        likes: increment(1),
-        likedBy: arrayUnion(currentUser.uid)
-      });
-      setIsLiked(true);
-      setLikesCount(prev => prev + 1);
+    try {
+      if (isLiked) {
+        // Unlike the event
+        await updateDoc(eventRef, {
+          likes: increment(-1),
+          likedBy: arrayRemove(currentUser.uid)
+        });
+        setIsLiked(false);
+        setLikesCount(prev => prev - 1);
+      } else {
+        // Like the event
+        await updateDoc(eventRef, {
+          likes: increment(1),
+          likedBy: arrayUnion(currentUser.uid)
+        });
+        setIsLiked(true);
+        setLikesCount(prev => prev + 1);
+      }
+    } catch (error) {
+      console.error("Error updating like:", error);
     }
   };
 
@@ -84,18 +108,22 @@ const ViewEvent: React.FC<ViewEventProps> = ({ event, onClose }) => {
 
     const userSavedEventsRef = doc(db, "userSavedEvents", currentUser.uid);
 
-    if (isSaved) {
-      // Unsave the event
-      await updateDoc(userSavedEventsRef, {
-        savedEvents: arrayRemove(event.id)
-      });
-      setIsSaved(false);
-    } else {
-      // Save the event
-      await setDoc(userSavedEventsRef, {
-        savedEvents: arrayUnion(event.id)
-      }, { merge: true });
-      setIsSaved(true);
+    try {
+      if (isSaved) {
+        // Unsave the event
+        await updateDoc(userSavedEventsRef, {
+          savedEvents: arrayRemove(event.id)
+        });
+        setIsSaved(false);
+      } else {
+        // Save the event
+        await setDoc(userSavedEventsRef, {
+          savedEvents: arrayUnion(event.id)
+        }, { merge: true });
+        setIsSaved(true);
+      }
+    } catch (error) {
+      console.error("Error updating save:", error);
     }
   };
 
@@ -130,9 +158,22 @@ const ViewEvent: React.FC<ViewEventProps> = ({ event, onClose }) => {
             )}
           </div>
           <div className="md:w-1/2 mx-4">
-            <p className="text-gray-300 mb-2">
-              <span className="font-semibold">Organizer:</span> {displayedEvent.organizer}
-            </p>
+            <div className="flex items-center mb-2">
+              {displayedEvent.organizerProfilePicture ? (
+                <img
+                  src={displayedEvent.organizerProfilePicture}
+                  alt="Organizer"
+                  className="w-8 h-8 rounded-full mr-2 object-cover"
+                />
+              ) : (
+                <div className="w-8 h-8 rounded-full mr-2 bg-gray-300 flex items-center justify-center">
+                  <span className="text-gray-600 text-xs">{displayedEvent.organizer[0]?.toUpperCase()}</span>
+                </div>
+              )}
+              <p className="text-gray-300 font-semibold px-1">
+                <span className="font-semibold"></span> {displayedEvent.organizer}
+              </p>
+            </div>
             <p className="text-gray-300 mb-4">
               <span className="font-semibold">Date & Time:</span>{" "}
               {new Date(displayedEvent.dateTime).toLocaleString([], {
