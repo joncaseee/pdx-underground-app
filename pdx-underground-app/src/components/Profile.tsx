@@ -342,7 +342,7 @@ const Profile: React.FC = () => {
   }
 
   return (
-    <div className="profile p-4">
+    <div className="profile p-4 mx-4">
       <h2 className="text-2xl font-bold mb-4 text-center">Your Profile</h2>
       <div className="mx-6">
         <button
@@ -352,10 +352,10 @@ const Profile: React.FC = () => {
           Sign Out
         </button>
 
-        <div className="mb-4 flex items-center">
+        <div className="mb-1 flex items-center">
           <div className="mr-4">
             {profilePictureUrl ? (
-              <img src={profilePictureUrl} alt="Profile" className="w-24 h-24 rounded-full object-cover" />
+              <img src={profilePictureUrl} alt="Profile" className="w-24 h-24 mr-4 rounded-full object-cover" />
             ) : (
               <div className="w-24 h-24 rounded-full bg-gray-300 flex items-center justify-center">
                 <span className="text-gray-600 text-2xl">{alias[0]?.toUpperCase()}</span>
@@ -369,11 +369,11 @@ const Profile: React.FC = () => {
                   type="text"
                   value={alias}
                   onChange={(e) => setAlias(e.target.value)}
-                  className="mr-2 p-2 border rounded"
+                  className="mr-2 p-1 w-36 border rounded"
                 />
                 <button
                   onClick={handleSaveAlias}
-                  className="bg-blue-500 text-white px-4 py-2 rounded"
+                  className=" text-white px-4 py-1 rounded"
                 >
                   Save
                 </button>
@@ -383,16 +383,26 @@ const Profile: React.FC = () => {
                 <h3 className="text-xl font-semibold mr-2">Alias: {alias}</h3>
                 <button
                   onClick={handleEditAlias}
-                  className="text-blue-500 underline"
+                  className="bg-opacity-0 text-gray-700 px-1 py-1 transition duration-300 mr-2 rounde"
                 >
-                  Edit
+                  <img src="/icon-EditAlias.svg" alt="Edit Alias" className="w-5 h-5 px-1 py-1" />
                 </button>
               </div>
             )}
+
+            <div className="flex items-left justify-left">
+              <button
+                onClick={handleViewPublicProfile}
+                className=" text-white text-xs px-1 py-1 rounded mt-2 mb-4"
+                >
+                Public Profile
+              </button>
+            </div>
           </div>
+         
         </div>
 
-        <div className="mb-4">
+        <div className="mb-4 ml-8">
           <input
             type="file"
             ref={fileInputRef}
@@ -402,9 +412,9 @@ const Profile: React.FC = () => {
           />
           <button
             onClick={handleFileButtonClick}
-            className="bg-gray-200 text-gray-700 px-4 py-2 rounded hover:bg-gray-300 transition duration-300 mr-2"
+            className="bg-zinc-700 text-gray-700 px-1 py-1 rounded transition duration-300 mr-2"
           >
-            Choose New Profile Picture
+              <img src="/icon-EditPic.svg" alt="Edit Picture" className="w-5 h-5 ml-1 align-middle justify-center object-center" />
           </button>
           {newProfilePicture && (
             <button
@@ -416,12 +426,9 @@ const Profile: React.FC = () => {
           )}
         </div>
 
-        <button
-          onClick={handleViewPublicProfile}
-          className="bg-green-500 text-white px-4 py-2 rounded mb-4"
-        >
-          View Public Profile
-        </button>
+
+       
+        
 
         <div className="flex justify-center mb-6">
           <button

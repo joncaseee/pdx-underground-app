@@ -207,10 +207,23 @@ const UserProfile: React.FC = () => {
 
   return (
     <div className="user-profile p-4 max-w-4xl mx-auto">
-      <h1 className="text-3xl font-bold mb-4">{profile.alias}'s Profile</h1>
-      <p className="mb-4">Role: {profile.role}</p>
+      <div className="flex flex-col items-center mb-8">
+        {profile.profilePictureUrl ? (
+          <img
+            src={profile.profilePictureUrl}
+            alt={`${profile.alias}'s profile`}
+            className="w-32 h-32 rounded-full object-cover mb-4"
+          />
+        ) : (
+          <div className="w-32 h-32 rounded-full bg-gray-300 flex items-center justify-center mb-4">
+            <span className="text-gray-600 text-4xl">{profile.alias[0]?.toUpperCase()}</span>
+          </div>
+        )}
+        <h1 className="text-3xl font-bold mb-2">{profile.alias}</h1>
+        <p className="text-xl text-gray-300 mb-2">Role: {profile.role}</p>
+      </div>
 
-      <h2 className="text-2xl font-semibold mb-2">Posted Events</h2>
+      <h2 className="text-2xl font-semibold mb-4">Posted Events</h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-8">
         {postedEvents.map(event => (
           <EventCard
@@ -226,7 +239,7 @@ const UserProfile: React.FC = () => {
         ))}
       </div>
 
-      <h2 className="text-2xl font-semibold mb-2">Saved Events</h2>
+      <h2 className="text-2xl font-semibold mb-4">Saved Events</h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
         {savedEvents.map(event => (
           <EventCard
