@@ -1,6 +1,6 @@
 {
-    "short_name": "Melee Music",
-    "name": "Melee Music",
+    "short_name": "PNW PULSE",
+    "name": "PNWPulse",
     "icons": [
       {
         "src": "favicon.ico",
@@ -8,7 +8,7 @@
         "type": "image/x-icon"
       },
       {
-        "src": "logo192.png",
+        "src": "logo512.png",
         "type": "image/png",
         "sizes": "192x192"
       },
