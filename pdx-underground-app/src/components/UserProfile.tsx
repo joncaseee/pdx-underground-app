@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { doc, getDoc, collection, query, where, getDocs, QueryDocumentSnapshot } from 'firebase/firestore';
-import { db } from '../firebase';
+import { doc, getDoc, collection, query, where, getDocs, QueryDocumentSnapshot, updateDoc, arrayUnion, arrayRemove, increment } from 'firebase/firestore';
+import { auth, db } from '../firebase';
 import EventCard from './EventCard';
+import ViewEvent from './ViewEvent';
 import { Event } from '../types/Event';
-import { ClipLoader } from "react-spinners"; 
+import { ClipLoader } from "react-spinners";
 
 interface UserProfile {
   alias: string;
@@ -18,6 +19,9 @@ const UserProfile: React.FC = () => {
   const [postedEvents, setPostedEvents] = useState<Event[]>([]);
   const [savedEvents, setSavedEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
+  const [userLikes, setUserLikes] = useState<{ [key: string]: boolean }>({});
+  const [userSaves, setUserSaves] = useState<{ [key: string]: boolean }>({});
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
 
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -55,7 +59,7 @@ const UserProfile: React.FC = () => {
         const savedEventsSnap = await getDoc(savedEventsRef);
         if (savedEventsSnap.exists()) {
           const savedEventIds = savedEventsSnap.data().savedEvents || [];
-          const savedEventsData = await Promise.all(
+          const fetchedSavedEvents = await Promise.all(
             savedEventIds.map(async (eventId: string) => {
               const eventDoc = await getDoc(doc(db, 'events', eventId));
               if (eventDoc.exists()) {
@@ -75,8 +79,30 @@ const UserProfile: React.FC = () => {
               return null;
             })
           );
-          setSavedEvents(savedEventsData.filter((event): event is Event => event !== null));
+          setSavedEvents(fetchedSavedEvents.filter((event): event is Event => event !== null));
         }
+
+        // Set user likes and saves
+        const currentUser = auth.currentUser;
+        if (currentUser) {
+          const userSavedEventsRef = doc(db, "userSavedEvents", currentUser.uid);
+          const userSavedEventsSnap = await getDoc(userSavedEventsRef);
+          const savedEventIds = userSavedEventsSnap.exists() ? userSavedEventsSnap.data().savedEvents || [] : [];
+
+          const newUserLikes = [...postedEventsData, ...savedEvents].reduce((acc, event) => {
+            acc[event.id] = event.likedBy.includes(currentUser.uid);
+            return acc;
+          }, {} as { [key: string]: boolean });
+
+          const newUserSaves = [...postedEventsData, ...savedEvents].reduce((acc, event) => {
+            acc[event.id] = savedEventIds.includes(event.id);
+            return acc;
+          }, {} as { [key: string]: boolean });
+
+          setUserLikes(newUserLikes);
+          setUserSaves(newUserSaves);
+        }
+
         setLoading(false);
       } catch (error) {
         console.error("Error fetching user profile data:", error);
@@ -86,6 +112,86 @@ const UserProfile: React.FC = () => {
 
     fetchUserProfile();
   }, [userId]);
+
+  const handleLike = async (eventId: string) => {
+    const currentUser = auth.currentUser;
+    if (!currentUser) return;
+
+    const eventRef = doc(db, "events", eventId);
+    const isLiked = userLikes[eventId];
+
+    try {
+      if (isLiked) {
+        await updateDoc(eventRef, {
+          likes: increment(-1),
+          likedBy: arrayRemove(currentUser.uid)
+        });
+        setUserLikes(prev => ({ ...prev, [eventId]: false }));
+      } else {
+        await updateDoc(eventRef, {
+          likes: increment(1),
+          likedBy: arrayUnion(currentUser.uid)
+        });
+        setUserLikes(prev => ({ ...prev, [eventId]: true }));
+      }
+
+      // Update the event in both postedEvents and savedEvents
+      const updateEventLikes = (events: Event[]) =>
+        events.map(event =>
+          event.id === eventId
+            ? {
+                ...event,
+                likes: isLiked ? event.likes - 1 : event.likes + 1,
+                likedBy: isLiked
+                  ? event.likedBy.filter(uid => uid !== currentUser.uid)
+                  : [...event.likedBy, currentUser.uid]
+              }
+            : event
+        );
+
+      setPostedEvents(updateEventLikes);
+      setSavedEvents(updateEventLikes);
+    } catch (error) {
+      console.error("Error updating like:", error);
+    }
+  };
+
+  const handleSave = async (eventId: string) => {
+    const currentUser = auth.currentUser;
+    if (!currentUser) return;
+
+    const userSavedEventsRef = doc(db, "userSavedEvents", currentUser.uid);
+    const isSaved = userSaves[eventId];
+
+    try {
+      if (isSaved) {
+        await updateDoc(userSavedEventsRef, {
+          savedEvents: arrayRemove(eventId)
+        });
+        setUserSaves(prev => ({ ...prev, [eventId]: false }));
+        setSavedEvents(prev => prev.filter(event => event.id !== eventId));
+      } else {
+        await updateDoc(userSavedEventsRef, {
+          savedEvents: arrayUnion(eventId)
+        });
+        setUserSaves(prev => ({ ...prev, [eventId]: true }));
+        const eventToAdd = postedEvents.find(event => event.id === eventId);
+        if (eventToAdd) {
+          setSavedEvents(prev => [...prev, eventToAdd]);
+        }
+      }
+    } catch (error) {
+      console.error("Error updating save:", error);
+    }
+  };
+
+  const handleEventClick = (event: Event) => {
+    setSelectedEvent(event);
+  };
+
+  const handleCloseModal = () => {
+    setSelectedEvent(null);
+  };
 
   if (loading) {
     return (
@@ -111,11 +217,11 @@ const UserProfile: React.FC = () => {
             key={event.id}
             event={event}
             isOwner={false}
-            isLiked={false}
-            isSaved={false}
-            onLike={() => {}}
-            onSave={() => {}}
-            onClick={() => {}}
+            isLiked={userLikes[event.id]}
+            isSaved={userSaves[event.id]}
+            onLike={handleLike}
+            onSave={handleSave}
+            onClick={handleEventClick}
           />
         ))}
       </div>
@@ -127,14 +233,16 @@ const UserProfile: React.FC = () => {
             key={event.id}
             event={event}
             isOwner={false}
-            isLiked={false}
-            isSaved={true}
-            onLike={() => {}}
-            onSave={() => {}}
-            onClick={() => {}}
+            isLiked={userLikes[event.id]}
+            isSaved={userSaves[event.id]}
+            onLike={handleLike}
+            onSave={handleSave}
+            onClick={handleEventClick}
           />
         ))}
       </div>
+
+      {selectedEvent && <ViewEvent event={selectedEvent} onClose={handleCloseModal} />}
     </div>
   );
 };
